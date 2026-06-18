@@ -1,0 +1,33 @@
+# Local development infrastructure - MINIMAL (no ClamAV)
+# Start with:  docker compose -f docker-compose.dev.minimal.yml up -d
+# Status:      docker compose -f docker-compose.dev.minimal.yml ps
+# Stop:        docker compose -f docker-compose.dev.minimal.yml down
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: placement-postgres
+    environment:
+      POSTGRES_DB: placement_dev
+      POSTGRES_USER: placement_user
+      POSTGRES_PASSWORD: dev_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - placement_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U placement_user -d placement_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Captures all outgoing dev email. Web UI at http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: placement-mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+
+volumes:
+  placement_pgdata:
