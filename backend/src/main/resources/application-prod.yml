@@ -7,9 +7,10 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
-      connection-timeout: 30000
+      connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
+      pool-name: PlacementHikariPool
 
   jpa:
     show-sql: false
@@ -18,13 +19,37 @@ spring:
   flyway:
     baseline-on-migrate: false
 
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/plain
+    min-response-size: 1024
+
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
   endpoint:
     health:
       show-details: never
+  metrics:
+    enable:
+      hikaricp: true
+    tags:
+      application: placement-platform
+      environment: prod
 
 logging:
   level:
     root: WARN
     com.college.placement: INFO
     org.flywaydb: INFO
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}

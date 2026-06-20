@@ -1,0 +1,12 @@
+.m2/
+target/
+.idea/
+.vscode/
+*.md
+*.bat
+*.ps1
+mvnw
+mvnw.cmd
+docker-compose*.yml
+.gitignore
+.env*

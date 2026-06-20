@@ -7,6 +7,7 @@ services:
   postgres:
     image: postgres:16
     container_name: placement-platform-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: placement_dev
       POSTGRES_USER: placement_user
