@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Full-stack integration tests with real per-request transactions (no class-level @Transactional).
  * This mirrors production behaviour: each MockMvc call commits or rolls back independently.
  */
-@SpringBootTest
+@SpringBootTest(classes = com.college.placement.Application.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthIntegrationTest {

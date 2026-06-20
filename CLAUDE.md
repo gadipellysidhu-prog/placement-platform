@@ -1,591 +1,253 @@
-# CLAUDE IMPLEMENTATION GUIDE
+# CLAUDE.md
 
-## ROLE
-
-You are a Principal Software Architect, Senior Spring Boot Engineer, Senior DevOps Engineer, and Enterprise Security Engineer.
-
-Work on the existing repository only.
-
-Do not rewrite the project.
-
-Do not change package architecture.
-
-Do not generate unnecessary explanations.
-
-Minimize token usage.
-
-Return only:
-
-* files changed
-* concise reasoning
-* implementation summary
-* next phase
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
 
-# GOAL
+## DO NOT CHANGE
 
-Transform the existing backend into a production-ready enterprise Placement Intelligence & Skill Verification Platform while preserving the existing Modular Monolith architecture, internal event bus, transactional outbox, observability layer, AI governance layer, and security-first design.
+Unless explicitly requested:
 
-Respect the architecture document completely.
-
-Never replace an existing working implementation with a different architecture.
-
-Always extend existing modules.
-
----
-
-# IMPORTANT RULES
-
-1. Never rewrite existing code if it already satisfies requirements.
-
-2. Modify only files that require changes.
-
-3. Reuse existing classes.
-
-4. Never duplicate services.
-
-5. Never create duplicate DTOs.
-
-6. Never create duplicate entities.
-
-7. Never create duplicate repositories.
-
-8. Never create duplicate configurations.
-
-9. Prefer extension over replacement.
-
-10. Follow SOLID principles.
-
-11. Follow Clean Architecture.
-
-12. Follow OWASP Top 10.
-
-13. Follow Spring Boot best practices.
-
-14. Follow Java 17 best practices.
-
-15. Every business transaction must be @Transactional.
-
-16. Every side effect must use the internal event bus and transactional outbox.
-
-17. No synchronous email sending inside business transactions.
-
-18. Every REST endpoint must return standardized API responses.
-
-19. Every controller must be thin.
-
-20. Business logic belongs only in services.
-
-21. Validation belongs in DTOs.
-
-22. Repository contains persistence only.
-
-23. No business logic inside controllers.
-
-24. No field injection.
-
-25. Constructor injection only.
-
-26. No magic strings.
-
-27. No hardcoded secrets.
-
-28. No TODO comments.
-
-29. No commented code.
-
-30. Build must remain successful after every phase.
+- Do not rewrite the existing package architecture.
+- Do not replace existing implementations that already satisfy requirements.
+- Do not rename database tables.
+- Do not rename Flyway migrations.
+- Do not modify the authentication flow.
+- Do not modify the `AppUser` entity unless absolutely necessary.
+- Do not change `SecurityConfig` unless fixing a verified bug.
+- Do not remove or weaken integration tests.
+- Do not introduce breaking API changes.
+- Do not create duplicate entities, repositories, DTOs, services, or configurations.
+- Prefer extension over replacement.
 
 ---
 
-# IMPLEMENTATION STRATEGY
+## Current Project Status
 
-Complete ONLY ONE phase.
+### Completed
 
-Stop.
+- Phase 1: Authentication
+- JWT RS256 Authentication
+- Refresh Token Rotation
+- BCrypt Password Hashing
+- Role-Based Access Control
+- Security Filter Chain
+- Flyway Authentication Migration
+- Integration Tests
+- Docker Development Environment
 
-Wait for my approval.
+### Current Phase
 
-Never implement multiple phases together.
+**Phase 2: Core Domain Foundation**
 
----
+Current implementation target: Student, Company, Recruiter, Branch, Skill
 
-# PHASE 1
+### Future Phases
 
-Authentication
-
-Implement:
-
-* JWT RS256
-* Access token
-* Refresh token
-* Login
-* Register
-* Logout
-* Refresh endpoint
-* BCrypt
-* Role hierarchy
-* RBAC
-* JWT filter
-* UserDetailsService
-* AuthenticationProvider
-* AuthenticationManager
-* Email verification placeholder
-* Forgot password placeholder
-
-Roles:
-
-ROLE_ADMIN
-
-ROLE_PLACEMENT_OFFICER
-
-ROLE_STUDENT
-
-Secure every endpoint.
-
-No public endpoints except:
-
-/auth/login
-
-/auth/register
-
-/auth/refresh
-
-/actuator/health
-
-Use existing security package.
-
-Do not create duplicate configs.
+Core Placement Domain · Business Services · REST APIs · Internal Event Bus · Transactional Outbox · File Pipeline · AI Governance · Observability · Security Hardening · Testing Expansion · CI/CD · Docker Production · Production Deployment
 
 ---
 
-# PHASE 2
+## Development Workflow
 
-Core Domain
+For every implementation phase:
 
-Implement enterprise entities:
-
-User
-
-Student
-
-PlacementOfficer
-
-Company
-
-JobPosting
-
-Application
-
-Offer
-
-Certificate
-
-Skill
-
-Branch
-
-NotificationHistory
-
-AuditLog
-
-OutboxEvent
-
-FileScanRecord
-
-AIModel
-
-PromptRegistry
-
-InferenceHistory
-
-Use Flyway migrations.
-
-Use indexes.
-
-Use UUID where appropriate.
-
-Implement optimistic locking.
-
-Implement auditing.
+1. Analyze the existing repository before making changes.
+2. Reuse existing classes whenever possible.
+3. Modify only required files.
+4. Do not rewrite unrelated code.
+5. Keep package architecture unchanged.
+6. Create Flyway migrations for schema changes.
+7. Ensure Hibernate starts successfully.
+8. Ensure Flyway migration succeeds.
+9. Run `mvn clean test`.
+10. Run `mvn spring-boot:run`.
+11. Stop after completing the current phase.
+12. Wait for explicit approval before continuing.
 
 ---
 
-# PHASE 3
+## Project
 
-Repositories
+**Placement Intelligence & Skill Verification Platform** — a Spring Boot 3.3.5 / Java 17 modular monolith.
 
-Create repositories only where absent.
-
-Add:
-
-pagination
-
-sorting
-
-specifications
-
-custom queries
-
-indexes
-
-entity graphs
-
-avoid N+1
+Working directory for all backend work: `backend/`
 
 ---
 
-# PHASE 4
+## Commands
 
-Business Services
+All commands run from `backend/`.
 
-Implement:
+The repo ships a bundled Maven at `.m2/apache-maven-3.9.6/` and a bundled JDK at `../../jdk/jdk-17.0.19+10`.  
+Use the wrapper script; do **not** rely on a system `mvn` or `java` being present.
 
-StudentService
+```bash
+# Compile
+.m2/apache-maven-3.9.6/bin/mvn.cmd compile
 
-CompanyService
+# Run all tests (uses H2 in-memory, no Docker required)
+.m2/apache-maven-3.9.6/bin/mvn.cmd clean test -Dspring.profiles.active=test
 
-ApplicationService
+# Run a single test class
+.m2/apache-maven-3.9.6/bin/mvn.cmd test -Dspring.profiles.active=test -Dtest=AuthIntegrationTest
 
-OfferService
+# Start the application (activates dev profile, port 8081)
+.m2/apache-maven-3.9.6/bin/mvn.cmd spring-boot:run
 
-EligibilityEngine
+# Package
+.m2/apache-maven-3.9.6/bin/mvn.cmd clean package -DskipTests
+```
 
-PolicyEngine
-
-CertificateService
-
-NotificationService
-
-SkillNormalizationService
-
-AuditService
-
-AIRegistryService
-
-OutboxService
-
-BackupService
-
-Every business action publishes domain events.
-
-Never call notification directly.
-
-Always use outbox.
+**Local dev stack** (PostgreSQL 16 + MailHog + ClamAV):
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+# Minimal (PostgreSQL only):
+docker-compose -f docker-compose.dev.minimal.yml up -d
+```
 
 ---
 
-# PHASE 5
+## Profiles
 
-Internal Event Bus
+| Profile | DB | Flyway | DDL |
+|---|---|---|---|
+| *(default)* | PostgreSQL (`localhost:5432/placement_dev`) | enabled | `validate` |
+| `dev` | same PostgreSQL | enabled | `validate` |
+| `test` | H2 in-memory | **disabled** | `create-drop` |
+| `prod` | env vars required | enabled | `validate` |
 
-Implement:
-
-ApplicationCreatedEvent
-
-CertificateUploadedEvent
-
-OfferAcceptedEvent
-
-OfferRejectedEvent
-
-OfferLimitReachedEvent
-
-NotificationRequestedEvent
-
-SkillMappedEvent
-
-Use @TransactionalEventListener(AFTER_COMMIT).
-
-Keep publisher unaware of subscribers.
+Test profile disables Flyway; Hibernate generates the H2 schema from entity definitions.  
+The default/dev/prod profiles use `ddl-auto: validate`, so every schema change **must** have a Flyway migration.
 
 ---
 
-# PHASE 6
+## Architecture
 
-Transactional Outbox
+### Modular Monolith
 
-Implement:
+```
+com.college.placement
+├── Application.java                  ← entry point
+├── modules/                          ← business modules (one package per bounded context)
+│   ├── auth/                         ← COMPLETE: JWT RS256, RBAC, login/register/refresh/logout
+│   │   ├── controller/
+│   │   ├── domain/         AppUser, RefreshToken, Role (enum)
+│   │   ├── dto/
+│   │   ├── repository/
+│   │   └── service/        AuthService
+│   ├── aigovernance/                 ← placeholder (package-info only)
+│   ├── analytics/                    ← placeholder
+│   ├── certificate/                  ← placeholder
+│   ├── company/                      ← placeholder
+│   ├── eligibility/                  ← placeholder
+│   ├── notification/                 ← placeholder
+│   ├── placement/                    ← placeholder
+│   ├── policy/                       ← placeholder
+│   └── student/                      ← placeholder
+└── shared/                           ← cross-cutting infrastructure
+    ├── audit/                        ← placeholder
+    ├── eventbus/                     ← placeholder
+    ├── exception/      GlobalExceptionHandler, AuthException
+    ├── filepipeline/                 ← placeholder
+    ├── observability/                ← placeholder
+    ├── outbox/                       ← placeholder
+    ├── ratelimit/      RateLimitConfig (Bucket4j placeholder)
+    └── security/       SecurityConfig, JwtService, JwtAuthenticationFilter,
+                        CustomUserDetailsService, SecurityProblemHandler,
+                        CorsConfig, JwtProperties
+```
 
-outbox table
+Each `modules/<name>/` sub-package follows a strict layered structure:
+`controller → service → repository → domain`
 
-poller
+### Security (Phase 1 — complete)
 
-retry
+- **JWT RS256**: `JwtService` signs/verifies. Ephemeral key pair on startup unless `JWT_PRIVATE_KEY_PEM` / `JWT_PUBLIC_KEY_PEM` env vars are set.
+- **Filter**: `JwtAuthenticationFilter` (OncePerRequestFilter). Never propagates exceptions; clears context on failure.
+- **Role hierarchy**: `ROLE_ADMIN > ROLE_PLACEMENT_OFFICER > ROLE_STUDENT`. Wired into `MethodSecurityExpressionHandler` for `@PreAuthorize`.
+- **Error format**: all security exceptions → RFC 7807 `ProblemDetail` JSON (`application/problem+json`) via `SecurityProblemHandler` (filter-level) and `GlobalExceptionHandler` (MVC-level).
+- **Public paths**: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/verify-email`, `/auth/forgot-password`, `/actuator/health`.
 
-backoff
+### Persistence
 
-dead-letter handling
+- **ORM**: Hibernate / Spring Data JPA, `open-in-view: false`.
+- **Migrations**: Flyway, `classpath:db/migration`, naming `V{major}_{minor}_{patch}__{description}.sql`.
+  - `V1_0_0__baseline.sql` — extensions + `app_metadata`
+  - `V1_1_0__auth_tables.sql` — `app_users`, `refresh_tokens`
+- `AppUser` is the auth identity entity (`modules/auth/domain`). Domain-level user profiles (Student, PlacementOfficer) link to it via FK; do **not** duplicate it.
+- Refresh tokens store a SHA-256 hex hash of the raw token (never the raw token).
 
-idempotency
+### Exception handling
 
-SKIP LOCKED polling
-
-cleanup job
-
-metrics
-
-health indicator
-
----
-
-# PHASE 7
-
-REST APIs
-
-Implement enterprise REST APIs.
-
-Use:
-
-DTO
-
-Mapper
-
-Validation
-
-Exception handler
-
-Pagination
-
-Filtering
-
-Sorting
-
-RFC7807-compatible error format
-
-OpenAPI annotations
-
-Consistent response envelope
-
----
-
-# PHASE 8
-
-File Pipeline
-
-Implement:
-
-magic byte validation
-
-MIME validation
-
-SHA-256 hashing
-
-deduplication
-
-ClamAV integration
-
-quarantine
-
-presigned URL abstraction
-
-metadata persistence
-
-audit logging
+- `GlobalExceptionHandler` (`@RestControllerAdvice`) handles: `MethodArgumentNotValidException` → 400, `ResponseStatusException` → preserves status, `AccessDeniedException` → 403, `AuthenticationException` → 401, `Exception` → 500.
+- `AuthException extends ResponseStatusException` — factory methods: `invalidCredentials()`, `invalidRefreshToken()`, `emailAlreadyRegistered()` (409), `accountLocked()`.
 
 ---
 
-# PHASE 9
+## Entity Design Rules
 
-Observability
-
-Implement:
-
-Correlation ID filter
-
-MDC propagation
-
-Micrometer metrics
-
-custom counters
-
-timers
-
-health indicators
-
-structured logs
-
-Actuator
-
-Prometheus-ready metrics
+- UUID primary keys with `@GeneratedValue(strategy = GenerationType.UUID)`.
+- `@Version` for optimistic locking on every entity.
+- `createdAt` and `updatedAt` set via `@PrePersist` / `@PreUpdate`.
+- `LAZY` relationships by default; use `EAGER` only when the association is unconditionally needed in every call path.
+- Bidirectional relationships only when navigation is required from both sides.
+- Avoid circular dependencies between module packages.
+- Validation annotations on entity fields.
+- `equals()` and `hashCode()` based only on the identifier field; do **not** use `@Data` on JPA entities.
+- Proper indexes and unique constraints declared on `@Table`.
+- Repository layer contains persistence logic only — no business logic.
 
 ---
 
-# PHASE 10
+## Performance Rules
 
-Security Hardening
-
-Implement:
-
-rate limiting
-
-CORS hardening
-
-security headers
-
-account lock
-
-brute-force protection
-
-refresh token rotation
-
-password policy
-
-audit logs
-
-input validation
-
-secure cookies where applicable
-
-secret externalization
+- Avoid N+1 queries; use fetch joins or entity graphs when loading associations.
+- Use pagination for all collection endpoints.
+- Index searchable and filterable columns.
+- Keep entities lightweight — do not eagerly load large collections.
 
 ---
 
-# PHASE 11
+## Security Rules
 
-Testing
-
-Add:
-
-unit tests
-
-integration tests
-
-repository tests
-
-controller tests
-
-security tests
-
-Testcontainers
-
-MockMvc
-
-minimum 80% coverage for business layer
+- Never hardcode secrets; use environment variables.
+- Preserve the JWT RS256 authentication architecture.
+- Preserve the RBAC role hierarchy.
+- Preserve RFC 7807 `ProblemDetail` error responses.
+- Never bypass authentication or authorization.
 
 ---
 
-# PHASE 12
+## Coding Conventions
 
-CI/CD
-
-Create GitHub Actions pipeline:
-
-Build
-
-Test
-
-SpotBugs
-
-Checkstyle
-
-PMD
-
-JaCoCo
-
-Dependency vulnerability scan
-
-Docker build
-
-Docker image scan
-
-Push image
-
-Deploy staging
-
-Manual approval
-
-Deploy production
-
-Rollback support
-
-Cache Maven dependencies
-
-Fail on quality gate
+- **Constructor injection only** — no `@Autowired` field injection.
+- **No business logic in controllers** — thin controllers delegate to services.
+- **No magic strings** — use named constants.
+- **Lombok**: `@Getter`, `@Setter`, `@NoArgsConstructor` on entities; `@Builder` on value objects / DTOs where appropriate.
+- **`@Modifying` queries** must declare `clearAutomatically = true, flushAutomatically = true`.
+- Every `@Transactional` write method belongs on the service, not the controller.
+- Side effects (email, notifications) go through the transactional outbox — never called synchronously inside a business transaction.
 
 ---
 
-# PHASE 13
+## Phase Status
 
-Docker Production
+| Phase | Status |
+|---|---|
+| 1 — Authentication | ✅ Complete |
+| 2 — Core Domain entities | ✅ Complete |
+| 3 — Repositories | 🔲 **Current** |
+| 4 — Business Services | 🔲 |
+| 5 — Internal Event Bus | 🔲 |
+| 6 — Transactional Outbox | 🔲 |
+| 7 — REST APIs | 🔲 |
+| 8 — File Pipeline | 🔲 |
+| 9 — Observability | 🔲 |
+| 10 — Security Hardening | 🔲 |
+| 11 — Testing | 🔲 |
+| 12 — CI/CD | 🔲 |
+| 13 — Docker Production | 🔲 |
+| 14 — Production Readiness | 🔲 |
 
-Optimize:
-
-Dockerfile
-
-multi-stage build
-
-non-root user
-
-healthcheck
-
-minimal image
-
-docker-compose
-
-resource limits
-
-restart policy
-
-env management
-
----
-
-# PHASE 14
-
-Production Readiness
-
-Implement:
-
-graceful shutdown
-
-connection pool tuning
-
-compression
-
-caching
-
-pagination
-
-indexes
-
-async processing
-
-backup verification
-
-disaster recovery automation
-
-startup validation
-
-readiness probe
-
-liveness probe
-
----
-
-# OUTPUT FORMAT
-
-After each phase output ONLY:
-
-Completed:
-
-Files changed:
-
-New files:
-
-Database migrations:
-
-Breaking changes:
-
-Manual actions required:
-
-Next phase:
-
-Do not explain code.
-
-Do not summarize architecture.
-
-Do not repeat requirements.
-
-Stop after completing one phase and wait for approval.
+**Implement ONE phase at a time. Stop and wait for explicit approval before proceeding.**

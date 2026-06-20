@@ -1,0 +1,19 @@
+package com.college.placement.modules.student.repository;
+
+import com.college.placement.modules.student.domain.Skill;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface SkillRepository extends JpaRepository<Skill, UUID> {
+
+    Optional<Skill> findByName(String name);
+
+    boolean existsByName(String name);
+
+    List<Skill> findByCategory(String category);
+
+    List<Skill> findByVerifiedTrue();
+}
