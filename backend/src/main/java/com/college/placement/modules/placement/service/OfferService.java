@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -62,7 +65,7 @@ public class OfferService {
                 application.getStudent().getId(),
                 application.getJobPosting().getCompany().getId(),
                 ctc));
-        return saved;
+        return getById(saved.getId());
     }
 
     @Transactional
@@ -70,7 +73,7 @@ public class OfferService {
         Offer offer = getById(offerId);
         requirePending(offer);
         offer.setStatus(OfferStatus.ACCEPTED);
-        Offer saved = offerRepository.save(offer);
+        offerRepository.save(offer);
 
         var student = offer.getApplication().getStudent();
         student.setStatus(StudentStatus.PLACED);
@@ -81,7 +84,7 @@ public class OfferService {
                 offer.getApplication().getId(),
                 student.getId(),
                 offer.getApplication().getJobPosting().getCompany().getId()));
-        return saved;
+        return getById(offerId);
     }
 
     @Transactional
@@ -89,13 +92,13 @@ public class OfferService {
         Offer offer = getById(offerId);
         requirePending(offer);
         offer.setStatus(OfferStatus.REJECTED);
-        Offer saved = offerRepository.save(offer);
+        offerRepository.save(offer);
         eventPublisher.publish(OfferRejectedEvent.of(
                 offerId,
                 offer.getApplication().getId(),
                 offer.getApplication().getStudent().getId(),
                 offer.getApplication().getJobPosting().getCompany().getId()));
-        return saved;
+        return getById(offerId);
     }
 
     @Transactional
@@ -103,7 +106,8 @@ public class OfferService {
         Offer offer = getById(offerId);
         requirePending(offer);
         offer.setStatus(OfferStatus.EXPIRED);
-        return offerRepository.save(offer);
+        offerRepository.save(offer);
+        return getById(offerId);
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +126,11 @@ public class OfferService {
     @Transactional(readOnly = true)
     public List<Offer> getByStatus(OfferStatus status) {
         return offerRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Offer> getAll(Pageable pageable) {
+        return offerRepository.findAll(pageable);
     }
 
     private void requirePending(Offer offer) {

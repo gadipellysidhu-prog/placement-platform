@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -52,7 +55,7 @@ public class CertificateService {
         }
         Certificate saved = certificateRepository.save(certificate);
         eventPublisher.publish(CertificateCreatedEvent.of(saved.getId(), studentId, name));
-        return saved;
+        return getById(saved.getId());
     }
 
     @Transactional
@@ -60,10 +63,10 @@ public class CertificateService {
         Certificate certificate = getById(certificateId);
         requirePending(certificate);
         certificate.setVerificationStatus(CertificateVerificationStatus.VERIFIED);
-        Certificate saved = certificateRepository.save(certificate);
+        certificateRepository.save(certificate);
         eventPublisher.publish(CertificateVerifiedEvent.of(
                 certificateId, certificate.getStudent().getId(), certificate.getName()));
-        return saved;
+        return getById(certificateId);
     }
 
     @Transactional
@@ -71,10 +74,10 @@ public class CertificateService {
         Certificate certificate = getById(certificateId);
         requirePending(certificate);
         certificate.setVerificationStatus(CertificateVerificationStatus.REJECTED);
-        Certificate saved = certificateRepository.save(certificate);
+        certificateRepository.save(certificate);
         eventPublisher.publish(CertificateRejectedEvent.of(
                 certificateId, certificate.getStudent().getId(), certificate.getName()));
-        return saved;
+        return getById(certificateId);
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +96,11 @@ public class CertificateService {
     public List<Certificate> getByStudentAndStatus(UUID studentId, CertificateVerificationStatus status) {
         Student student = studentService.getById(studentId);
         return certificateRepository.findByStudentAndVerificationStatus(student, status);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Certificate> getAll(Pageable pageable) {
+        return certificateRepository.findAll(pageable);
     }
 
     private void requirePending(Certificate certificate) {

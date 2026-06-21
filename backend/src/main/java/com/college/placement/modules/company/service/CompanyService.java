@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -91,5 +94,10 @@ public class CompanyService {
     @Transactional(readOnly = true)
     public List<Company> getByIndustry(String industry) {
         return companyRepository.findByIndustry(industry);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Company> getAll(Pageable pageable) {
+        return companyRepository.findAll(pageable);
     }
 }

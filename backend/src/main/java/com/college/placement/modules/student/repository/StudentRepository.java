@@ -4,6 +4,9 @@ import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.domain.Student;
 import com.college.placement.modules.student.domain.StudentStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,7 +15,14 @@ import java.util.UUID;
 
 public interface StudentRepository extends JpaRepository<Student, UUID> {
 
+    @EntityGraph(attributePaths = {"user", "branch", "skills"})
+    Optional<Student> findById(UUID id);
+
+    @EntityGraph(attributePaths = {"user", "branch", "skills"})
     Optional<Student> findByUser(AppUser user);
+
+    @EntityGraph(attributePaths = {"user", "branch", "skills"})
+    Page<Student> findAll(Pageable pageable);
 
     Optional<Student> findByRollNumber(String rollNumber);
 

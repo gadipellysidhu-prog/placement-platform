@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -62,7 +65,7 @@ public class JobApplicationService {
         JobApplication saved = jobApplicationRepository.save(application);
         eventPublisher.publish(ApplicationSubmittedEvent.of(
                 saved.getId(), studentId, jobPostingId, posting.getCompany().getId()));
-        return saved;
+        return getById(saved.getId());
     }
 
     @Transactional
@@ -71,14 +74,14 @@ public class JobApplicationService {
         ApplicationStatus previous = application.getStatus();
         validateStatusTransition(previous, newStatus);
         application.setStatus(newStatus);
-        JobApplication saved = jobApplicationRepository.save(application);
+        jobApplicationRepository.save(application);
         eventPublisher.publish(ApplicationStatusChangedEvent.of(
                 applicationId,
                 application.getStudent().getId(),
                 application.getJobPosting().getId(),
                 previous,
                 newStatus));
-        return saved;
+        return getById(applicationId);
     }
 
     @Transactional
@@ -92,14 +95,14 @@ public class JobApplicationService {
         }
         ApplicationStatus previous = application.getStatus();
         application.setStatus(ApplicationStatus.WITHDRAWN);
-        JobApplication saved = jobApplicationRepository.save(application);
+        jobApplicationRepository.save(application);
         eventPublisher.publish(ApplicationStatusChangedEvent.of(
                 applicationId,
                 application.getStudent().getId(),
                 application.getJobPosting().getId(),
                 previous,
                 ApplicationStatus.WITHDRAWN));
-        return saved;
+        return getById(applicationId);
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +126,11 @@ public class JobApplicationService {
     @Transactional(readOnly = true)
     public List<JobApplication> getByStatus(ApplicationStatus status) {
         return jobApplicationRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JobApplication> getAll(Pageable pageable) {
+        return jobApplicationRepository.findAll(pageable);
     }
 
     private void validateStatusTransition(ApplicationStatus current, ApplicationStatus next) {

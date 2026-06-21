@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -57,7 +60,7 @@ public class StudentService {
         }
         Student saved = studentRepository.save(student);
         eventPublisher.publish(StudentCreatedEvent.of(saved.getId(), user.getId(), rollNumber));
-        return saved;
+        return getById(saved.getId());
     }
 
     @Transactional
@@ -68,9 +71,9 @@ public class StudentService {
         }
         student.setCgpa(cgpa);
         student.setCurrentYear(currentYear);
-        Student saved = studentRepository.save(student);
+        studentRepository.save(student);
         eventPublisher.publish(StudentUpdatedEvent.of(studentId));
-        return saved;
+        return getById(studentId);
     }
 
     @Transactional
@@ -79,9 +82,9 @@ public class StudentService {
         StudentStatus previous = student.getStatus();
         validateStatusTransition(previous, newStatus);
         student.setStatus(newStatus);
-        Student saved = studentRepository.save(student);
+        studentRepository.save(student);
         eventPublisher.publish(StudentStatusChangedEvent.of(studentId, previous, newStatus));
-        return saved;
+        return getById(studentId);
     }
 
     @Transactional
@@ -89,9 +92,9 @@ public class StudentService {
         Student student = getById(studentId);
         Skill skill = skillService.getById(skillId);
         student.getSkills().add(skill);
-        Student saved = studentRepository.save(student);
+        studentRepository.save(student);
         eventPublisher.publish(StudentSkillAddedEvent.of(studentId, skillId, skill.getName()));
-        return saved;
+        return getById(studentId);
     }
 
     @Transactional
@@ -99,9 +102,9 @@ public class StudentService {
         Student student = getById(studentId);
         Skill skill = skillService.getById(skillId);
         student.getSkills().remove(skill);
-        Student saved = studentRepository.save(student);
+        studentRepository.save(student);
         eventPublisher.publish(StudentSkillRemovedEvent.of(studentId, skillId, skill.getName()));
-        return saved;
+        return getById(studentId);
     }
 
     @Transactional
@@ -111,7 +114,8 @@ public class StudentService {
                 && student.getCgpa() != null
                 && student.getCgpa().compareTo(new BigDecimal("5.0")) >= 0;
         student.setPlacementEligible(eligible);
-        return studentRepository.save(student);
+        studentRepository.save(student);
+        return getById(studentId);
     }
 
     @Transactional(readOnly = true)
@@ -135,6 +139,11 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<Student> getByStatus(StudentStatus status) {
         return studentRepository.findByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Student> getAll(Pageable pageable) {
+        return studentRepository.findAll(pageable);
     }
 
     private void validateStatusTransition(StudentStatus current, StudentStatus next) {
