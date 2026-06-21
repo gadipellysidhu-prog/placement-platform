@@ -51,3 +51,8 @@ jwt:
   refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}
   private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
   public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
+
+logging:
+  level:
+    com.college.placement: INFO
+    org.flywaydb: INFO
