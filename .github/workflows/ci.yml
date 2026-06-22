@@ -2,18 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
 
 jobs:
-  build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-latest
 
+  # ── Stage 1: Compile ──────────────────────────────────────────────────────
+  compile:
+    name: "Stage 1 · Compile"
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,30 +20,134 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and run tests
+      - name: Compile
         working-directory: backend
-        run: mvn clean test -Dspring.profiles.active=test -B -q
+        run: mvn compile -B
 
-      - name: Package (skip tests — already ran above)
+  # ── Stage 2: Unit & Integration Tests ────────────────────────────────────
+  test:
+    name: "Stage 2 · Test"
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run tests
         working-directory: backend
-        run: mvn package -DskipTests -B -q
+        run: mvn clean test -Dspring.profiles.active=test -B
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  # ── Stage 3: Package Validation ───────────────────────────────────────────
+  package:
+    name: "Stage 3 · Package"
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Package
+        working-directory: backend
+        run: mvn clean package -DskipTests -B
+
+      - name: Verify JAR exists
+        run: |
+          jar=$(ls backend/target/*.jar 2>/dev/null | grep -v 'original' | head -1)
+          if [ -z "$jar" ]; then
+            echo "ERROR: No JAR found in backend/target/" && exit 1
+          fi
+          echo "JAR verified: $jar  ($(du -h "$jar" | cut -f1))"
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: placement-platform-jar
           path: backend/target/*.jar
+          if-no-files-found: error
           retention-days: 7
 
-  docker-build:
-    name: Docker Build Check
+  # ── Stage 4: Flyway Validation ────────────────────────────────────────────
+  flyway-validate:
+    name: "Stage 4 · Flyway Validate"
     runs-on: ubuntu-latest
-    needs: build-and-test
-
+    # Runs in parallel with the test → package chain; only needs source checkout
+    needs: compile
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Verify migration scripts are present
+        run: |
+          dir="backend/src/main/resources/db/migration"
+          if [ ! -d "$dir" ]; then
+            echo "ERROR: Migration directory not found: $dir" && exit 1
+          fi
+          count=$(find "$dir" -name '*.sql' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "ERROR: No SQL migration files found in $dir" && exit 1
+          fi
+          echo "Found $count migration file(s):"
+          ls -1 "$dir"
+
+      - name: Validate Flyway naming convention
+        # Files must match V{version}__{description}.sql (double underscore)
+        run: |
+          dir="backend/src/main/resources/db/migration"
+          invalid=0
+          while IFS= read -r f; do
+            base=$(basename "$f")
+            if ! echo "$base" | grep -qE '^V[0-9]+(_[0-9]+)*__[A-Za-z0-9_]+\.sql$'; then
+              echo "BAD NAME: $base"
+              invalid=$((invalid + 1))
+            fi
+          done < <(find "$dir" -name '*.sql')
+          if [ "$invalid" -gt 0 ]; then
+            echo "ERROR: $invalid file(s) violate Flyway naming convention" && exit 1
+          fi
+          echo "All migration files pass naming convention check."
+
+      - name: Detect duplicate migration versions
+        run: |
+          dir="backend/src/main/resources/db/migration"
+          dupes=$(find "$dir" -name 'V*.sql' \
+            | xargs -I{} basename {} \
+            | sed 's/__.*//' \
+            | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "ERROR: Duplicate migration version(s) detected: $dupes" && exit 1
+          fi
+          echo "No duplicate migration versions found."
+
+  # ── Stage 5: Docker Validation ────────────────────────────────────────────
+  docker-build:
+    name: "Stage 5 · Docker Build"
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
         working-directory: backend
         run: docker build -t placement-platform:ci .
+
+      - name: Verify image was created
+        run: docker image inspect placement-platform:ci --format '{{.Id}}'
