@@ -40,6 +40,7 @@ public class SecurityConfig {
         new AntPathRequestMatcher("/actuator/info"),
         new AntPathRequestMatcher("/actuator/metrics"),
         new AntPathRequestMatcher("/actuator/metrics/**"),
+        new AntPathRequestMatcher("/actuator/prometheus"),
         new AntPathRequestMatcher("/swagger-ui/**"),
         new AntPathRequestMatcher("/swagger-ui.html"),
         new AntPathRequestMatcher("/v3/api-docs/**"),

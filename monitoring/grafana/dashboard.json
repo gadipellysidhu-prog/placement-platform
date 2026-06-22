@@ -1,0 +1,187 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus"
+    }
+  ],
+  "title": "Placement Platform — Overview",
+  "uid": "placement-platform-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["placement", "spring-boot"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Application Status",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "up{application=\"placement-platform\"}",
+          "legendFormat": "UP"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "thresholds": {
+          "steps": [
+            { "value": 0, "color": "red" },
+            { "value": 1, "color": "green" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "JVM Heap Used",
+      "type": "gauge",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "jvm_memory_used_bytes{application=\"placement-platform\", area=\"heap\"} / jvm_memory_max_bytes{application=\"placement-platform\", area=\"heap\"} * 100",
+          "legendFormat": "Heap %"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "thresholds": {
+          "steps": [
+            { "value": 0, "color": "green" },
+            { "value": 70, "color": "yellow" },
+            { "value": 85, "color": "red" }
+          ]
+        }
+      },
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+    },
+    {
+      "id": 3,
+      "title": "Registered Users",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "platform_users_total{application=\"placement-platform\"}",
+          "legendFormat": "Users"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 4,
+      "title": "Outbox Dead-Letter Events",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "outbox_deadletter_count{application=\"placement-platform\"}",
+          "legendFormat": "Dead"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "thresholds": {
+          "steps": [
+            { "value": 0, "color": "green" },
+            { "value": 1, "color": "red" }
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(http_server_requests_seconds_count{application=\"placement-platform\"}[1m])",
+          "legendFormat": "{{method}} {{uri}} ({{status}})"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 6,
+      "title": "HTTP P95 Latency",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application=\"placement-platform\"}[5m]))",
+          "legendFormat": "P95"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{application=\"placement-platform\"}[5m]))",
+          "legendFormat": "P50"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 7,
+      "title": "Auth Login Success/Failure",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 6 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(auth_login_success_total{application=\"placement-platform\"}[1m])",
+          "legendFormat": "Success"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(auth_login_failure_total{application=\"placement-platform\"}[1m])",
+          "legendFormat": "Failure"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 8,
+      "title": "Outbox Pending Events",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 12, "w": 8, "h": 6 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "outbox_pending_count{application=\"placement-platform\"}",
+          "legendFormat": "Pending"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "File Scan Results",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 12, "w": 8, "h": 6 },
+      "targets": [
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(file_scan_clean_total{application=\"placement-platform\"}[1m])",
+          "legendFormat": "Clean"
+        },
+        {
+          "datasource": "${DS_PROMETHEUS}",
+          "expr": "rate(file_scan_infected_total{application=\"placement-platform\"}[1m])",
+          "legendFormat": "Infected"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    }
+  ]
+}

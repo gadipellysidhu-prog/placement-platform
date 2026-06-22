@@ -34,10 +34,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,metrics
+        include: health,info,metrics,prometheus,env,configprops
   endpoint:
     health:
-      show-details: never
+      show-details: when-authorized
+      show-components: when-authorized
+    env:
+      show-values: never
+    configprops:
+      show-values: never
   metrics:
     enable:
       hikaricp: true

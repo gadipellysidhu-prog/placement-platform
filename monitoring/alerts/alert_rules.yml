@@ -1,0 +1,72 @@
+groups:
+  - name: placement-platform
+    interval: 30s
+    rules:
+
+      - alert: OutboxDeadLetterEvents
+        expr: outbox_deadletter_count{application="placement-platform"} > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead-letter outbox events detected"
+          description: "{{ $value }} event(s) in dead-letter state. Manual intervention required."
+
+      - alert: OutboxHighFailureRate
+        expr: outbox_failed_count{application="placement-platform"} > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High outbox failure count"
+          description: "{{ $value }} failed outbox events. Check dispatcher logs."
+
+      - alert: HighAuthLoginFailureRate
+        expr: rate(auth_login_failure_total{application="placement-platform"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High login failure rate"
+          description: "Login failures at {{ $value | humanize }}/s — possible brute force."
+
+      - alert: ApplicationDown
+        expr: up{job="placement-platform"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Placement Platform is down"
+          description: "Target {{ $labels.instance }} has been unreachable for 1 minute."
+
+      - alert: HighJvmHeapUsage
+        expr: >
+          jvm_memory_used_bytes{application="placement-platform", area="heap"}
+          / jvm_memory_max_bytes{application="placement-platform", area="heap"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap usage above 85%"
+          description: "Heap at {{ $value | humanizePercentage }}. Risk of OOM."
+
+      - alert: SlowHttpRequests
+        expr: >
+          histogram_quantile(0.95,
+            rate(http_server_requests_seconds_bucket{application="placement-platform"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 HTTP response time above 2s"
+          description: "P95 latency is {{ $value | humanizeDuration }}."
+
+      - alert: FileScanInfectedFilesDetected
+        expr: increase(file_scan_infected_total{application="placement-platform"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Infected file detected"
+          description: "{{ $value }} infected file(s) detected in the last 10 minutes."

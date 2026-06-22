@@ -6,6 +6,8 @@ import com.college.placement.shared.filepipeline.dto.FileUploadResponse;
 import com.college.placement.shared.filepipeline.exception.FileStorageException;
 import com.college.placement.shared.filepipeline.exception.VirusDetectedException;
 import com.college.placement.shared.filepipeline.repository.FileScanRecordRepository;
+import com.college.placement.shared.observability.metrics.FilePipelineMetrics;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -27,17 +29,20 @@ public class FilePipelineService {
     private final FileStorageService storageService;
     private final ClamAvService clamAvService;
     private final FileScanRecordRepository recordRepository;
+    private final FilePipelineMetrics metrics;
 
     public FilePipelineService(FileValidationService validationService,
                                FileHashService hashService,
                                FileStorageService storageService,
                                ClamAvService clamAvService,
-                               FileScanRecordRepository recordRepository) {
+                               FileScanRecordRepository recordRepository,
+                               FilePipelineMetrics metrics) {
         this.validationService = validationService;
         this.hashService       = hashService;
         this.storageService    = storageService;
         this.clamAvService     = clamAvService;
         this.recordRepository  = recordRepository;
+        this.metrics           = metrics;
     }
 
     /**
@@ -62,6 +67,8 @@ public class FilePipelineService {
         // 3. Write to disk; obtain unique storage key.
         String storageKey = storageService.store(file);
 
+        metrics.recordUpload();
+
         // 4. Persist a PENDING record so the upload is traceable even if scanning fails.
         FileScanRecord record = new FileScanRecord();
         record.setFilename(sanitizeFilename(file.getOriginalFilename()));
@@ -77,21 +84,30 @@ public class FilePipelineService {
 
         // 5. Virus scan (I/O outside any transaction).
         FileScanStatus scanStatus;
+        Timer.Sample scanSample = metrics.startSample();
         try (InputStream in = storageService.load(storageKey).getInputStream()) {
             scanStatus = clamAvService.scan(in);
         } catch (IOException ex) {
             log.error("Could not open stored file for scanning: storageKey={}", storageKey, ex);
             scanStatus = FileScanStatus.FAILED;
+        } finally {
+            metrics.stopScanTimer(scanSample);
         }
 
         // 6. Update scan outcome.
         record.setScanStatus(scanStatus);
         if (scanStatus == FileScanStatus.INFECTED) {
+            metrics.recordScanInfected();
             record.setQuarantined(true);
             record = recordRepository.save(record);
             storageService.delete(storageKey); // remove infected file
             log.warn("Infected file quarantined and deleted: id={}", record.getId());
             throw new VirusDetectedException(record.getFilename());
+        }
+        if (scanStatus == FileScanStatus.FAILED) {
+            metrics.recordScanFailed();
+        } else {
+            metrics.recordScanClean();
         }
 
         record = recordRepository.save(record);

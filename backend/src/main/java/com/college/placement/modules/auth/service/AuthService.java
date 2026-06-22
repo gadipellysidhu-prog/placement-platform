@@ -10,8 +10,10 @@ import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.college.placement.shared.eventbus.EventPublisher;
 import com.college.placement.shared.eventbus.events.UserRegisteredEvent;
 import com.college.placement.shared.exception.AuthException;
+import com.college.placement.shared.observability.metrics.AuthMetrics;
 import com.college.placement.shared.security.JwtProperties;
 import com.college.placement.shared.security.JwtService;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
     private final EventPublisher eventPublisher;
+    private final AuthMetrics authMetrics;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(AppUserRepository userRepository,
@@ -40,47 +43,66 @@ public class AuthService {
                        JwtService jwtService,
                        JwtProperties jwtProperties,
                        PasswordEncoder passwordEncoder,
-                       EventPublisher eventPublisher) {
-        this.userRepository        = userRepository;
+                       EventPublisher eventPublisher,
+                       AuthMetrics authMetrics) {
+        this.userRepository         = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
-        this.jwtService            = jwtService;
-        this.jwtProperties         = jwtProperties;
-        this.passwordEncoder       = passwordEncoder;
-        this.eventPublisher        = eventPublisher;
+        this.jwtService             = jwtService;
+        this.jwtProperties          = jwtProperties;
+        this.passwordEncoder        = passwordEncoder;
+        this.eventPublisher         = eventPublisher;
+        this.authMetrics            = authMetrics;
     }
 
     @Transactional
     public TokenResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw AuthException.emailAlreadyRegistered();
+        Timer.Sample sample = authMetrics.startSample();
+        try {
+            if (userRepository.existsByEmail(request.email())) {
+                throw AuthException.emailAlreadyRegistered();
+            }
+
+            AppUser user = new AppUser();
+            user.setEmail(request.email());
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+            user.setRole(request.role());
+            userRepository.save(user);
+
+            TokenResponse tokens = issueTokens(user);
+            eventPublisher.publish(UserRegisteredEvent.of(user.getId(), user.getEmail(), user.getRole().name()));
+            authMetrics.recordRegisterSuccess();
+            return tokens;
+        } finally {
+            authMetrics.stopRegisterTimer(sample);
         }
-
-        AppUser user = new AppUser();
-        user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRole(request.role());
-        userRepository.save(user);
-
-        TokenResponse tokens = issueTokens(user);
-        eventPublisher.publish(UserRegisteredEvent.of(user.getId(), user.getEmail(), user.getRole().name()));
-        return tokens;
     }
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
-        AppUser user = userRepository.findByEmail(request.email())
-                .orElseThrow(AuthException::invalidCredentials);
+        Timer.Sample sample = authMetrics.startSample();
+        try {
+            AppUser user = userRepository.findByEmail(request.email())
+                    .orElseThrow(AuthException::invalidCredentials);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw AuthException.invalidCredentials();
+            if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                authMetrics.recordLoginFailure();
+                throw AuthException.invalidCredentials();
+            }
+
+            if (user.isAccountLocked()) {
+                authMetrics.recordLoginFailure();
+                throw AuthException.accountLocked();
+            }
+
+            refreshTokenRepository.revokeAllByUser(user);
+            TokenResponse tokens = issueTokens(user);
+            authMetrics.recordLoginSuccess();
+            return tokens;
+        } catch (AuthException ex) {
+            throw ex;
+        } finally {
+            authMetrics.stopLoginTimer(sample);
         }
-
-        if (user.isAccountLocked()) {
-            throw AuthException.accountLocked();
-        }
-
-        refreshTokenRepository.revokeAllByUser(user);
-        return issueTokens(user);
     }
 
     @Transactional

@@ -36,12 +36,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,env,configprops
   endpoint:
     health:
-      show-details: never
+      show-details: when-authorized
+      show-components: when-authorized
       probes:
         enabled: true
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+  metrics:
+    tags:
+      application: placement-platform
 
 info:
   app:

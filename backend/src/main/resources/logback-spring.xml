@@ -5,7 +5,7 @@
     <springProfile name="dev,test">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:--}] [%X{requestId:--}] - %msg%n</pattern>
             </encoder>
         </appender>
         <root level="INFO">
@@ -25,6 +25,8 @@
                     <thread>thread</thread>
                     <level>level</level>
                 </fieldNames>
+                <customFields>{"service":"placement-platform"}</customFields>
+                <!-- MDC fields (traceId, requestId) are auto-included by LogstashEncoder -->
             </encoder>
         </appender>
         <root level="WARN">
