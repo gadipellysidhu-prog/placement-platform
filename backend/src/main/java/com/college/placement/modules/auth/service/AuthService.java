@@ -7,6 +7,8 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.shared.eventbus.EventPublisher;
+import com.college.placement.shared.eventbus.events.UserRegisteredEvent;
 import com.college.placement.shared.exception.AuthException;
 import com.college.placement.shared.security.JwtProperties;
 import com.college.placement.shared.security.JwtService;
@@ -30,18 +32,21 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
+    private final EventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(AppUserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        JwtService jwtService,
                        JwtProperties jwtProperties,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       EventPublisher eventPublisher) {
         this.userRepository        = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtService            = jwtService;
         this.jwtProperties         = jwtProperties;
         this.passwordEncoder       = passwordEncoder;
+        this.eventPublisher        = eventPublisher;
     }
 
     @Transactional
@@ -56,7 +61,9 @@ public class AuthService {
         user.setRole(request.role());
         userRepository.save(user);
 
-        return issueTokens(user);
+        TokenResponse tokens = issueTokens(user);
+        eventPublisher.publish(UserRegisteredEvent.of(user.getId(), user.getEmail(), user.getRole().name()));
+        return tokens;
     }
 
     @Transactional

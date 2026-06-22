@@ -37,6 +37,14 @@ file:
     clam-av-timeout-ms: 5000
     scan-enabled: false
 
+app:
+  outbox:
+    initial-delay: 3600000  # 1 hour — prevents auto-firing during tests
+    fixed-delay: 3600000
+    batch-size: 10
+    max-retries: 3
+    retry-backoff-minutes: 1,5,15
+
 logging:
   level:
     com.college.placement: DEBUG

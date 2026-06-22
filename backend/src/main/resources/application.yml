@@ -70,6 +70,14 @@ file:
     clam-av-timeout-ms: ${CLAMAV_TIMEOUT_MS:30000}
     scan-enabled: ${FILE_SCAN_ENABLED:true}
 
+app:
+  outbox:
+    batch-size: 10
+    fixed-delay: 5000
+    initial-delay: 5000
+    max-retries: 5
+    retry-backoff-minutes: 1,5,15,30,60
+
 logging:
   level:
     com.college.placement: INFO
