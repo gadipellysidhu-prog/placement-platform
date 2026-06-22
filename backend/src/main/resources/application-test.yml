@@ -24,6 +24,19 @@ management:
     health:
       show-details: always
 
+file:
+  pipeline:
+    upload-dir: ./target/test-uploads
+    max-size-bytes: 10485760
+    allowed-mime-types:
+      - application/pdf
+      - image/png
+      - image/jpeg
+    clam-av-host: localhost
+    clam-av-port: 3310
+    clam-av-timeout-ms: 5000
+    scan-enabled: false
+
 logging:
   level:
     com.college.placement: DEBUG

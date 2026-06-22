@@ -20,6 +20,11 @@ spring:
     locations: classpath:db/migration
     out-of-order: false
 
+  servlet:
+    multipart:
+      max-file-size: ${FILE_MAX_MULTIPART_SIZE:10MB}
+      max-request-size: ${FILE_MAX_MULTIPART_SIZE:10MB}
+
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
@@ -51,6 +56,19 @@ jwt:
   refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}
   private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
   public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
+
+file:
+  pipeline:
+    upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+    max-size-bytes: ${FILE_MAX_SIZE_BYTES:10485760}
+    allowed-mime-types:
+      - application/pdf
+      - image/png
+      - image/jpeg
+    clam-av-host: ${CLAMAV_HOST:localhost}
+    clam-av-port: ${CLAMAV_PORT:3310}
+    clam-av-timeout-ms: ${CLAMAV_TIMEOUT_MS:30000}
+    scan-enabled: ${FILE_SCAN_ENABLED:true}
 
 logging:
   level:

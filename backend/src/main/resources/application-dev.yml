@@ -16,6 +16,13 @@ management:
     health:
       show-details: always
 
+file:
+  pipeline:
+    upload-dir: ./uploads-dev
+    clam-av-host: ${CLAMAV_HOST:localhost}
+    clam-av-port: ${CLAMAV_PORT:3310}
+    scan-enabled: true
+
 logging:
   level:
     com.college.placement: DEBUG
