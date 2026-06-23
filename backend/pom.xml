@@ -178,6 +178,52 @@
                 </configuration>
             </plugin>
 
+            <!-- Maven Surefire Plugin: activate the 'test' Spring profile for every test
+                 class so that application-test.yml is loaded. This ensures @DataJpaTest
+                 slices pick up spring.flyway.enabled=false and spring.jpa.hibernate.ddl-auto=create-drop,
+                 preventing Flyway from running PostgreSQL-specific migrations (e.g. CREATE EXTENSION
+                 pg_trgm) against the H2 in-memory database used by the test slice. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
+            <!-- SpotBugs: static bytecode analysis, High severity only.
+                 Run: mvn spotbugs:check   Report: target/spotbugsXml.xml -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.4</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>High</threshold>
+                    <failOnError>true</failOnError>
+                    <xmlOutput>true</xmlOutput>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+            </plugin>
+
+            <!-- Checkstyle: source code style and correctness rules.
+                 Run: mvn checkstyle:check   Report: target/checkstyle-result.xml -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                    <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                    <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
+                    <outputFileFormat>xml</outputFileFormat>
+                </configuration>
+            </plugin>
+
             <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>

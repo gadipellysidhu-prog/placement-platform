@@ -7,8 +7,9 @@ RUN mvn package -DskipTests -q
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-COPY --from=build /app/target/*.jar app.jar
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown appuser:appgroup /app
+COPY --chown=appuser:appgroup --from=build /app/target/*.jar app.jar
 USER appuser
 EXPOSE 8081
 ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-Duser.timezone=Asia/Kolkata", "-jar", "app.jar"]

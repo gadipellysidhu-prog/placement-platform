@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusion filter — Placement Platform.
+
+  Threshold is set to High in the Maven plugin config, so Medium/Low bugs
+  never reach this filter. These exclusions handle patterns that SpotBugs
+  flags as High but which are intentional in this codebase.
+-->
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0
+        https://raw.githubusercontent.com/spotbugs/spotbugs/4.8.6/spotbugs/etc/findbugsfilter.xsd">
+
+    <!--
+      Lombok @Getter on collection fields (e.g. Set<Skill> skills) returns
+      the live collection. This is intentional for JPA entity graph traversal
+      and is guarded at the service layer. EI_EXPOSE_REP2 is typically Medium
+      but excluded here as belt-and-suspenders for future threshold changes.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Class name="~com\.college\.placement\..*"/>
+    </Match>
+
+</FindBugsFilter>

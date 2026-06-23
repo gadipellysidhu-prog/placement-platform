@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- Dev/test: human-readable colored output -->
-    <springProfile name="dev,test">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:--}] [%X{requestId:--}] - %msg%n</pattern>
-            </encoder>
-        </appender>
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-    </springProfile>
+    <!--
+      Default console appender — applies to ALL profiles including the default profile
+      (i.e. when SPRING_PROFILES_ACTIVE is not set). This ensures startup errors are
+      always visible on stdout, never silently discarded.
+    -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:--}] [%X{requestId:--}] - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-    <!-- Prod: structured JSON for log aggregation (ELK / CloudWatch / etc.) -->
+    <!-- Root logger: INFO → CONSOLE for default, dev, and test profiles -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Prod: replace root with structured JSON (ELK / CloudWatch / etc.) -->
     <springProfile name="prod">
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -26,7 +30,7 @@
                     <level>level</level>
                 </fieldNames>
                 <customFields>{"service":"placement-platform"}</customFields>
-                <!-- MDC fields (traceId, requestId) are auto-included by LogstashEncoder -->
+                <!-- MDC fields (traceId, requestId) auto-included by LogstashEncoder -->
             </encoder>
         </appender>
         <root level="WARN">
