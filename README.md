@@ -1,5 +1,9 @@
 # Placement Intelligence & Skill Verification Platform
 
+[![CI](https://github.com/YOUR_ORG/placement-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/placement-platform/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/YOUR_ORG/placement-platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/YOUR_ORG/placement-platform/actions/workflows/codeql.yml)
+[![Dependency Audit](https://github.com/YOUR_ORG/placement-platform/actions/workflows/dependency-check.yml/badge.svg)](https://github.com/YOUR_ORG/placement-platform/actions/workflows/dependency-check.yml)
+
 A modular-monolith placement platform (Spring Boot 3 · Java 17 · PostgreSQL 16 · React).
 This repository is being built **increment by increment** per the Development MOP — each
 step compiles, boots, and passes a health check before the next is added.
@@ -71,6 +75,33 @@ mvn clean install          # runs the Testcontainers smoke test (needs Docker ru
 mvn clean package -DskipTests
 java -jar target/placement-1.0.0.jar --spring.profiles.active=dev
 ```
+
+## CI/CD Pipeline
+
+Three GitHub Actions workflows run automatically:
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | Every push / PR | 9-stage build, test, quality, security, Docker, readiness |
+| `codeql.yml` | Push to `main`, PRs, weekly | CodeQL SAST — Java + GitHub Actions |
+| `dependency-check.yml` | Push to `main`, weekly | OWASP NVD CVE scan (CVSS ≥ 9 fails build) |
+
+### CI stages
+
+```
+1 Compile           → validates sources compile cleanly
+2 Test              → mvn clean test (H2 in-memory, no Docker required)
+3 Package           → mvn package, verifies Spring Boot fat-JAR structure
+4 Flyway Validate   → naming convention + duplicate version detection (parallel)
+5 Code Quality      → Checkstyle + SpotBugs (parallel)
+6 Secrets Scan      → Gitleaks detects committed credentials (parallel)
+7 Docker Build      → multi-stage image + /actuator/health container smoke test
+8 Deployment Ready  → prod config, migrations, env-var documentation, JAR integrity
+9 Release Readiness → aggregated pass/fail summary in GitHub Actions UI
+```
+
+Add an `NVD_API_KEY` repository secret (free at nvd.nist.gov) to avoid rate limiting
+in the OWASP workflow. Without it the scan still runs, just slower.
 
 ## What's next
 

@@ -1,8 +1,15 @@
-name: CI
+name: CI — Placement Platform
 
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Xmx1g'
 
 jobs:
 
@@ -16,15 +23,19 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: maven
 
-      - name: Compile
+      - name: Compile sources
         working-directory: backend
         run: mvn compile -B
 
-  # ── Stage 2: Unit & Integration Tests ────────────────────────────────────
+      - name: Compile test sources
+        working-directory: backend
+        run: mvn test-compile -B
+
+  # ── Stage 2: Unit & Integration Tests ─────────────────────────────────────
   test:
     name: "Stage 2 · Test"
     runs-on: ubuntu-latest
@@ -35,21 +46,34 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: maven
 
-      - name: Run tests
+      - name: Run all tests
         working-directory: backend
         run: mvn clean test -Dspring.profiles.active=test -B
 
-      - name: Publish test results
+      - name: Upload Surefire reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: surefire-reports
+          name: surefire-reports-${{ github.run_number }}
           path: backend/target/surefire-reports/
           retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Publish test summary
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          passed=$(grep -r 'tests="' backend/target/surefire-reports/*.xml 2>/dev/null \
+            | grep -oP 'tests="\K[0-9]+' | awk '{s+=$1} END {print s+0}')
+          failed=$(grep -r 'failures="' backend/target/surefire-reports/*.xml 2>/dev/null \
+            | grep -oP 'failures="\K[0-9]+' | awk '{s+=$1} END {print s+0}')
+          errors=$(grep -r 'errors="' backend/target/surefire-reports/*.xml 2>/dev/null \
+            | grep -oP 'errors="\K[0-9]+' | awk '{s+=$1} END {print s+0}')
+          echo "- **Total:** $passed  **Failed:** $failed  **Errors:** $errors" >> $GITHUB_STEP_SUMMARY
 
   # ── Stage 3: Package Validation ───────────────────────────────────────────
   package:
@@ -62,27 +86,32 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: maven
 
-      - name: Package
+      - name: Build executable JAR
         working-directory: backend
         run: mvn clean package -DskipTests -B
 
-      - name: Verify JAR exists
+      - name: Verify JAR integrity
         run: |
           jar=$(ls backend/target/*.jar 2>/dev/null | grep -v 'original' | head -1)
           if [ -z "$jar" ]; then
-            echo "ERROR: No JAR found in backend/target/" && exit 1
+            echo "::error::No executable JAR found in backend/target/" && exit 1
           fi
-          echo "JAR verified: $jar  ($(du -h "$jar" | cut -f1))"
+          size=$(du -h "$jar" | cut -f1)
+          echo "::notice::JAR verified: $(basename "$jar") ($size)"
+          jar tf "$jar" | grep -q 'BOOT-INF/classes/' \
+            || { echo "::error::Missing BOOT-INF/classes/ — not a Spring Boot fat JAR"; exit 1; }
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: placement-platform-jar
-          path: backend/target/*.jar
+          name: placement-platform-jar-${{ github.run_number }}
+          path: |
+            backend/target/*.jar
+            !backend/target/*-original.jar
           if-no-files-found: error
           retention-days: 7
 
@@ -90,39 +119,32 @@ jobs:
   flyway-validate:
     name: "Stage 4 · Flyway Validate"
     runs-on: ubuntu-latest
-    # Runs in parallel with the test → package chain; only needs source checkout
     needs: compile
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify migration scripts are present
+      - name: Verify migration directory exists
         run: |
           dir="backend/src/main/resources/db/migration"
           if [ ! -d "$dir" ]; then
-            echo "ERROR: Migration directory not found: $dir" && exit 1
+            echo "::error::Migration directory not found: $dir" && exit 1
           fi
           count=$(find "$dir" -name '*.sql' | wc -l)
-          if [ "$count" -eq 0 ]; then
-            echo "ERROR: No SQL migration files found in $dir" && exit 1
-          fi
           echo "Found $count migration file(s):"
           ls -1 "$dir"
 
       - name: Validate Flyway naming convention
-        # Files must match V{version}__{description}.sql (double underscore)
         run: |
           dir="backend/src/main/resources/db/migration"
           invalid=0
           while IFS= read -r f; do
             base=$(basename "$f")
             if ! echo "$base" | grep -qE '^V[0-9]+(_[0-9]+)*__[A-Za-z0-9_]+\.sql$'; then
-              echo "BAD NAME: $base"
+              echo "::error::Invalid migration name: $base"
               invalid=$((invalid + 1))
             fi
           done < <(find "$dir" -name '*.sql')
-          if [ "$invalid" -gt 0 ]; then
-            echo "ERROR: $invalid file(s) violate Flyway naming convention" && exit 1
-          fi
+          [ "$invalid" -gt 0 ] && exit 1
           echo "All migration files pass naming convention check."
 
       - name: Detect duplicate migration versions
@@ -133,13 +155,72 @@ jobs:
             | sed 's/__.*//' \
             | sort | uniq -d)
           if [ -n "$dupes" ]; then
-            echo "ERROR: Duplicate migration version(s) detected: $dupes" && exit 1
+            echo "::error::Duplicate migration versions: $dupes" && exit 1
           fi
           echo "No duplicate migration versions found."
 
-  # ── Stage 5: Docker Validation ────────────────────────────────────────────
+  # ── Stage 5: Code Quality Gate ────────────────────────────────────────────
+  code-quality:
+    name: "Stage 5 · Code Quality"
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Checkstyle
+        working-directory: backend
+        run: mvn checkstyle:check -B
+
+      - name: SpotBugs
+        working-directory: backend
+        run: mvn spotbugs:check -B
+
+      - name: Upload Checkstyle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report-${{ github.run_number }}
+          path: backend/target/checkstyle-result.xml
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload SpotBugs report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-report-${{ github.run_number }}
+          path: backend/target/spotbugsXml.xml
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ── Stage 6: Secrets Detection ────────────────────────────────────────────
+  security-scan:
+    name: "Stage 6 · Secrets Scan"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks — detect committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ── Stage 7: Docker Build & Container Startup Validation ──────────────────
   docker-build:
-    name: "Stage 5 · Docker Build"
+    name: "Stage 7 · Docker Build & Startup"
     runs-on: ubuntu-latest
     needs: package
     steps:
@@ -149,5 +230,146 @@ jobs:
         working-directory: backend
         run: docker build -t placement-platform:ci .
 
-      - name: Verify image was created
-        run: docker image inspect placement-platform:ci --format '{{.Id}}'
+      - name: Inspect image metadata
+        run: |
+          docker image inspect placement-platform:ci \
+            --format 'ID={{.Id}}  Size={{.Size}}  Created={{.Created}}'
+
+      - name: Container startup validation (H2 test profile — no DB required)
+        run: |
+          CID=$(docker run -d \
+            -e SPRING_PROFILES_ACTIVE=test \
+            -e SERVER_PORT=8081 \
+            -p 8081:8081 \
+            placement-platform:ci)
+          echo "Container: $CID"
+
+          STATUS=""
+          for i in $(seq 1 30); do
+            sleep 2
+            RAW=$(curl -sf http://localhost:8081/actuator/health 2>/dev/null || true)
+            STATUS=$(echo "$RAW" | python3 -c \
+              "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" 2>/dev/null || true)
+            echo "  attempt $i: status='$STATUS'"
+            if [ "$STATUS" = "UP" ]; then
+              echo "::notice::Container health check passed (${i}×2 s)"
+              docker stop "$CID"
+              exit 0
+            fi
+          done
+
+          echo "::error::Container did not become healthy within 60 s"
+          docker logs "$CID" 2>&1 | tail -60
+          docker stop "$CID" || true
+          exit 1
+
+  # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
+  deployment-readiness:
+    name: "Stage 8 · Deployment Readiness"
+    runs-on: ubuntu-latest
+    needs: [package, flyway-validate]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Required deployment files present
+        run: |
+          fail=0
+          for f in \
+            "backend/src/main/resources/application-prod.yml" \
+            "backend/src/main/resources/application.yml" \
+            "backend/Dockerfile"; do
+            if [ -f "$f" ]; then echo "  ✓ $f"
+            else echo "::error::Missing: $f"; fail=1; fi
+          done
+          [ "$fail" -eq 1 ] && exit 1
+
+      - name: Flyway migrations present
+        run: |
+          count=$(find backend/src/main/resources/db/migration -name 'V*.sql' | wc -l)
+          echo "Migration files: $count"
+          [ "$count" -lt 1 ] && echo "::error::No Flyway migrations found" && exit 1
+          echo "  ✓ $count migration file(s)"
+
+      - name: Actuator health endpoint configured
+        run: |
+          if grep -q 'health' backend/src/main/resources/application.yml; then
+            echo "  ✓ actuator health referenced in application.yml"
+          else
+            echo "::warning::Actuator health not found in application.yml"
+          fi
+
+      - name: Required env vars documented in prod config
+        run: |
+          for var in DB_URL DB_USERNAME DB_PASSWORD; do
+            if grep -q "\${$var" backend/src/main/resources/application-prod.yml; then
+              echo "  ✓ \${$var} documented in application-prod.yml"
+            else
+              echo "::warning::$var not referenced in application-prod.yml"
+            fi
+          done
+
+      - name: Download JAR artifact and verify Spring Boot structure
+        uses: actions/download-artifact@v4
+        with:
+          name: placement-platform-jar-${{ github.run_number }}
+          path: /tmp/verify-jar
+
+      - name: Confirm JAR is a valid Spring Boot fat JAR
+        run: |
+          jar=$(ls /tmp/verify-jar/*.jar | grep -v original | head -1)
+          echo "Validating: $(basename "$jar")"
+          jar tf "$jar" | grep -q 'BOOT-INF/classes/'  && echo "  ✓ BOOT-INF/classes present"
+          jar tf "$jar" | grep -q 'org/springframework/boot/loader/' \
+            && echo "  ✓ Spring Boot launcher present"
+
+  # ── Stage 9: Release Readiness Summary ────────────────────────────────────
+  release-readiness:
+    name: "Stage 9 · Release Readiness"
+    runs-on: ubuntu-latest
+    needs:
+      - test
+      - package
+      - flyway-validate
+      - code-quality
+      - security-scan
+      - docker-build
+      - deployment-readiness
+    if: always()
+    steps:
+      - name: Pipeline summary
+        env:
+          R_TEST:        ${{ needs.test.result }}
+          R_PACKAGE:     ${{ needs.package.result }}
+          R_FLYWAY:      ${{ needs.flyway-validate.result }}
+          R_QUALITY:     ${{ needs.code-quality.result }}
+          R_SECURITY:    ${{ needs.security-scan.result }}
+          R_DOCKER:      ${{ needs.docker-build.result }}
+          R_READINESS:   ${{ needs.deployment-readiness.result }}
+        run: |
+          icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
+
+          {
+            echo "## CI Pipeline — Run #${{ github.run_number }}"
+            echo ""
+            echo "**Commit:** \`${{ github.sha }}\`  **Branch:** \`${{ github.ref_name }}\`"
+            echo ""
+            echo "| Stage | Result |"
+            echo "|-------|--------|"
+            echo "| Tests               | $(icon $R_TEST) \`$R_TEST\` |"
+            echo "| Package             | $(icon $R_PACKAGE) \`$R_PACKAGE\` |"
+            echo "| Flyway Validate     | $(icon $R_FLYWAY) \`$R_FLYWAY\` |"
+            echo "| Code Quality        | $(icon $R_QUALITY) \`$R_QUALITY\` |"
+            echo "| Secrets Scan        | $(icon $R_SECURITY) \`$R_SECURITY\` |"
+            echo "| Docker Build+Health | $(icon $R_DOCKER) \`$R_DOCKER\` |"
+            echo "| Deployment Readiness| $(icon $R_READINESS) \`$R_READINESS\` |"
+          } >> $GITHUB_STEP_SUMMARY
+
+          # Fail if any critical gate failed
+          for result in "$R_TEST" "$R_PACKAGE" "$R_FLYWAY" "$R_QUALITY" \
+                        "$R_DOCKER" "$R_READINESS"; do
+            if [ "$result" = "failure" ]; then
+              echo "::error::One or more critical pipeline gates failed."
+              exit 1
+            fi
+          done
+          echo "::notice::All pipeline gates passed — release candidate ready."

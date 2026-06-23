@@ -1,0 +1,66 @@
+name: Dependency Security Audit (OWASP)
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly Monday 06:00 UTC — off-peak to avoid NVD rate limits
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owasp-dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # Cache the NVD CVE database so weekly runs skip the 300 MB download
+      - name: Cache NVD database
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
+
+      - name: OWASP Dependency Check
+        working-directory: backend
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          EXTRA=""
+          if [ -n "$NVD_API_KEY" ]; then
+            EXTRA="-DnvdApiKey=$NVD_API_KEY"
+          fi
+          # Run via plugin coordinate — no pom.xml modification needed.
+          # Fails build on CVSS >= 9 (CRITICAL). Test-scope deps excluded.
+          mvn org.owasp:dependency-check-maven:10.0.4:check \
+            -DfailBuildOnCVSS=9 \
+            -Dformat=HTML,XML \
+            -DskipTestScope=true \
+            -DnvdApiDelay=6000 \
+            $EXTRA \
+            -B
+
+      - name: Upload OWASP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report-${{ github.run_number }}
+          path: |
+            backend/target/dependency-check-report.html
+            backend/target/dependency-check-report.xml
+          retention-days: 30
+          if-no-files-found: ignore
