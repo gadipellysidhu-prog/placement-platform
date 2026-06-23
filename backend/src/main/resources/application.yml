@@ -36,7 +36,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,env,configprops
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
@@ -64,6 +64,19 @@ jwt:
   refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}
   private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
   public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
+
+security:
+  rate-limit:
+    enabled: true
+    login-capacity: 5
+    register-capacity: 3
+    refresh-capacity: 20
+    general-capacity: 100
+  lockout:
+    max-failures: 5
+    lock-duration-minutes: 15
+  headers:
+    hsts-enabled: false
 
 file:
   pipeline:

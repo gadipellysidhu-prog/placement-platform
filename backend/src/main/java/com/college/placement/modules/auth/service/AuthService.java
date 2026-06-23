@@ -11,6 +11,8 @@ import com.college.placement.shared.eventbus.EventPublisher;
 import com.college.placement.shared.eventbus.events.UserRegisteredEvent;
 import com.college.placement.shared.exception.AuthException;
 import com.college.placement.shared.observability.metrics.AuthMetrics;
+import com.college.placement.shared.security.SecurityAuditLogger;
+import com.college.placement.shared.security.SecurityProperties;
 import com.college.placement.shared.security.JwtProperties;
 import com.college.placement.shared.security.JwtService;
 import io.micrometer.core.instrument.Timer;
@@ -36,6 +38,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EventPublisher eventPublisher;
     private final AuthMetrics authMetrics;
+    private final SecurityProperties securityProperties;
+    private final SecurityAuditLogger auditLogger;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(AppUserRepository userRepository,
@@ -44,14 +48,18 @@ public class AuthService {
                        JwtProperties jwtProperties,
                        PasswordEncoder passwordEncoder,
                        EventPublisher eventPublisher,
-                       AuthMetrics authMetrics) {
-        this.userRepository         = userRepository;
+                       AuthMetrics authMetrics,
+                       SecurityProperties securityProperties,
+                       SecurityAuditLogger auditLogger) {
+        this.userRepository       = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
-        this.jwtService             = jwtService;
-        this.jwtProperties          = jwtProperties;
-        this.passwordEncoder        = passwordEncoder;
-        this.eventPublisher         = eventPublisher;
-        this.authMetrics            = authMetrics;
+        this.jwtService           = jwtService;
+        this.jwtProperties        = jwtProperties;
+        this.passwordEncoder      = passwordEncoder;
+        this.eventPublisher       = eventPublisher;
+        this.authMetrics          = authMetrics;
+        this.securityProperties   = securityProperties;
+        this.auditLogger          = auditLogger;
     }
 
     @Transactional
@@ -77,14 +85,17 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = AuthException.class)
     public TokenResponse login(LoginRequest request) {
         Timer.Sample sample = authMetrics.startSample();
         try {
             AppUser user = userRepository.findByEmail(request.email())
                     .orElseThrow(AuthException::invalidCredentials);
 
+            checkBruteForceLock(user);
+
             if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                recordLoginFailure(user);
                 authMetrics.recordLoginFailure();
                 throw AuthException.invalidCredentials();
             }
@@ -94,8 +105,10 @@ public class AuthService {
                 throw AuthException.accountLocked();
             }
 
+            resetLoginFailures(user);
             refreshTokenRepository.revokeAllByUser(user);
             TokenResponse tokens = issueTokens(user);
+            auditLogger.loginSuccess(user.getEmail(), "");
             authMetrics.recordLoginSuccess();
             return tokens;
         } catch (AuthException ex) {
@@ -137,6 +150,50 @@ public class AuthService {
     public void initiateForgotPassword(String email) {
         // Placeholder: Phase 6 outbox will dispatch password reset email.
     }
+
+    // ── Brute-force protection ────────────────────────────────────────────────
+
+    private void checkBruteForceLock(AppUser user) {
+        Instant lockedUntil = user.getLockedUntil();
+        if (lockedUntil != null && lockedUntil.isAfter(Instant.now())) {
+            auditLogger.accountLocked(user.getEmail(), "");
+            throw AuthException.accountLocked();
+        }
+        if (lockedUntil != null && lockedUntil.isBefore(Instant.now())) {
+            user.setLockedUntil(null);
+            user.setFailureCount(0);
+            user.setLastFailureAt(null);
+            userRepository.save(user);
+        }
+    }
+
+    private void recordLoginFailure(AppUser user) {
+        int failures = user.getFailureCount() + 1;
+        user.setFailureCount(failures);
+        user.setLastFailureAt(Instant.now());
+
+        int maxFailures = securityProperties.getLockout().getMaxFailures();
+        if (failures >= maxFailures) {
+            int lockMinutes = securityProperties.getLockout().getLockDurationMinutes();
+            user.setLockedUntil(Instant.now().plusSeconds(lockMinutes * 60L));
+            auditLogger.accountLocked(user.getEmail(), "");
+        } else {
+            auditLogger.loginFailure(user.getEmail(), "", "bad_credentials attempt=" + failures);
+        }
+
+        userRepository.save(user);
+    }
+
+    private void resetLoginFailures(AppUser user) {
+        if (user.getFailureCount() > 0 || user.getLockedUntil() != null) {
+            user.setFailureCount(0);
+            user.setLastFailureAt(null);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
+    }
+
+    // ── Token issuance ────────────────────────────────────────────────────────
 
     private TokenResponse issueTokens(AppUser user) {
         String accessToken  = jwtService.generateAccessToken(user.getEmail(), user.getRole().name());

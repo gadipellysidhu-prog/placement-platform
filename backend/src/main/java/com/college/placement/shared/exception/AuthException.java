@@ -22,6 +22,6 @@ public class AuthException extends ResponseStatusException {
     }
 
     public static AuthException accountLocked() {
-        return new AuthException(HttpStatus.FORBIDDEN, "Account is locked.");
+        return new AuthException(HttpStatus.LOCKED, "Account is temporarily locked due to too many failed login attempts.");
     }
 }

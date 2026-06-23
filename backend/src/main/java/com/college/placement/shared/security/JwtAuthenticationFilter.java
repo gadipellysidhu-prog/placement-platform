@@ -27,10 +27,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final SecurityAuditLogger auditLogger;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   UserDetailsService userDetailsService,
+                                   SecurityAuditLogger auditLogger) {
         this.jwtService         = jwtService;
         this.userDetailsService = userDetailsService;
+        this.auditLogger        = auditLogger;
     }
 
     @Override
@@ -41,9 +45,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String header = request.getHeader(AUTHORIZATION);
             if (StringUtils.hasText(header) && header.startsWith(BEARER_PREFIX)) {
                 String token = header.substring(BEARER_PREFIX.length());
-                jwtService.validateAndParse(token).ifPresent(claims -> setAuthentication(request, claims));
+                var claims = jwtService.validateAndParse(token);
+                if (claims.isPresent()) {
+                    setAuthentication(request, claims.get());
+                } else {
+                    auditLogger.jwtValidationFailure(request.getRequestURI(), extractIp(request), "token rejected");
+                }
             }
         } catch (Exception ex) {
+            auditLogger.jwtValidationFailure(request.getRequestURI(), extractIp(request), ex.getMessage());
             log.debug("JWT filter error on {}: {}", request.getRequestURI(), ex.getMessage());
             SecurityContextHolder.clearContext();
         }
@@ -67,5 +77,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (Exception ex) {
             log.debug("Could not set authentication: {}", ex.getMessage());
         }
+    }
+
+    private String extractIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

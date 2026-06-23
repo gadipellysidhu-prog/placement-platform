@@ -1,13 +1,24 @@
 package com.college.placement.observability;
 
+import com.college.placement.modules.auth.domain.Role;
+import com.college.placement.modules.auth.dto.RegisterRequest;
+import com.college.placement.modules.auth.dto.TokenResponse;
+import com.college.placement.modules.auth.repository.AppUserRepository;
+import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
@@ -21,8 +32,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class ObservabilityIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
+    @Autowired AppUserRepository userRepository;
+    @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired JdbcTemplate jdbcTemplate;
+
+    private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
+
+    @BeforeEach
+    void cleanDb() {
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+        try {
+            refreshTokenRepository.deleteAll();
+            userRepository.deleteAll();
+        } finally {
+            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+        }
+    }
 
     @Test
     void actuatorHealth_isPubliclyAccessible() throws Exception {
@@ -32,14 +59,20 @@ class ObservabilityIntegrationTest {
     }
 
     @Test
-    void actuatorMetrics_isPubliclyAccessible() throws Exception {
-        mockMvc.perform(get("/actuator/metrics"))
+    void actuatorMetrics_requiresAdminAuth() throws Exception {
+        String adminToken = registerAdmin();
+
+        mockMvc.perform(get("/actuator/metrics")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void actuatorPrometheus_isPubliclyAccessible() throws Exception {
-        mockMvc.perform(get("/actuator/prometheus"))
+    void actuatorPrometheus_requiresAdminAuth() throws Exception {
+        String adminToken = registerAdmin();
+
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/plain"));
     }
@@ -61,15 +94,33 @@ class ObservabilityIntegrationTest {
 
     @Test
     void prometheusEndpoint_containsAuthMetrics() throws Exception {
-        mockMvc.perform(get("/actuator/prometheus"))
+        String adminToken = registerAdmin();
+
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("auth_login_success_total")));
     }
 
     @Test
     void prometheusEndpoint_containsOutboxMetrics() throws Exception {
-        mockMvc.perform(get("/actuator/prometheus"))
+        String adminToken = registerAdmin();
+
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("outbox_pending_count")));
+    }
+
+    private String registerAdmin() throws Exception {
+        MvcResult result = mockMvc.perform(post("/auth/register")
+                        .contentType(JSON)
+                        .content(objectMapper.writeValueAsString(
+                            new RegisterRequest("admin@obs.test", "password123", Role.ROLE_ADMIN))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        TokenResponse tokens = objectMapper.readValue(
+            result.getResponse().getContentAsString(), TokenResponse.class);
+        return tokens.accessToken();
     }
 }

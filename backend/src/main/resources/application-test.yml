@@ -45,6 +45,15 @@ app:
     max-retries: 3
     retry-backoff-minutes: 1,5,15
 
+security:
+  rate-limit:
+    enabled: false
+  lockout:
+    max-failures: 5
+    lock-duration-minutes: 15
+  headers:
+    hsts-enabled: false
+
 logging:
   level:
     com.college.placement: DEBUG

@@ -38,6 +38,15 @@ public class AppUser {
     @Column(name = "account_locked", nullable = false)
     private boolean accountLocked = false;
 
+    @Column(name = "failure_count", nullable = false)
+    private int failureCount = 0;
+
+    @Column(name = "last_failure_at")
+    private Instant lastFailureAt;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

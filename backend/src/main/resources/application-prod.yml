@@ -34,7 +34,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,env,configprops
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
@@ -50,11 +50,24 @@ management:
       application: placement-platform
       environment: prod
 
+security:
+  rate-limit:
+    enabled: true
+    login-capacity: 5
+    register-capacity: 3
+    refresh-capacity: 20
+    general-capacity: 100
+  lockout:
+    max-failures: 5
+    lock-duration-minutes: 15
+  headers:
+    hsts-enabled: true
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
 logging:
   level:
     root: WARN
     com.college.placement: INFO
     org.flywaydb: INFO
-
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
