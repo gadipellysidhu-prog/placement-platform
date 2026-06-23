@@ -281,7 +281,7 @@ jobs:
             if [ -f "$f" ]; then echo "  ✓ $f"
             else echo "::error::Missing: $f"; fail=1; fi
           done
-          [ "$fail" -eq 1 ] && exit 1
+          exit "$fail"
 
       - name: Flyway migrations present
         run: |
@@ -316,11 +316,11 @@ jobs:
 
       - name: Confirm JAR is a valid Spring Boot fat JAR
         run: |
-          jar=$(ls /tmp/verify-jar/*.jar | grep -v original | head -1)
+          jar=$(find /tmp/verify-jar -name '*.jar' | head -1)
+          if [ -z "$jar" ]; then echo "::error::No JAR found in artifact" && exit 1; fi
           echo "Validating: $(basename "$jar")"
-          jar tf "$jar" | grep -q 'BOOT-INF/classes/'  && echo "  ✓ BOOT-INF/classes present"
-          jar tf "$jar" | grep -q 'org/springframework/boot/loader/' \
-            && echo "  ✓ Spring Boot launcher present"
+          unzip -l "$jar" | grep -q 'BOOT-INF/classes/'        && echo "  ✓ BOOT-INF/classes present"
+          unzip -l "$jar" | grep -q 'org/springframework/boot/' && echo "  ✓ Spring Boot launcher present"
 
   # ── Stage 9: Release Readiness Summary ────────────────────────────────────
   release-readiness:
