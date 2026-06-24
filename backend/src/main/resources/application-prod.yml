@@ -34,11 +34,24 @@ management:
   endpoints:
     web:
       exposure:
+        # Expose only what operations needs; never expose env/configprops/beans in prod
         include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
       show-components: when-authorized
+      # Kubernetes / Docker health probe groups
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+          show-details: never
+          show-components: never
+        readiness:
+          include: readinessState,db,diskSpace
+          show-details: never
+          show-components: never
     env:
       show-values: never
     configprops:

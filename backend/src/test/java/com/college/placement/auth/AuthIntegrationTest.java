@@ -137,6 +137,51 @@ class AuthIntegrationTest {
     }
 
     @Test
+    void login_missingBody_returns400ProblemDetail() throws Exception {
+        mvc.perform(post("/auth/login")
+                        .contentType(JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.type").value("urn:placement:bad-request"))
+                .andExpect(jsonPath("$.title").value("Malformed Request"));
+    }
+
+    @Test
+    void login_malformedJson_returns400ProblemDetail() throws Exception {
+        mvc.perform(post("/auth/login")
+                        .contentType(JSON)
+                        .content("{not valid json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.type").value("urn:placement:bad-request"))
+                .andExpect(jsonPath("$.title").value("Malformed Request"));
+    }
+
+    @Test
+    void login_unsupportedContentType_returns415ProblemDetail() throws Exception {
+        mvc.perform(post("/auth/login")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("email=x&password=y"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.type").value("urn:placement:unsupported-media-type"))
+                .andExpect(jsonPath("$.title").value("Unsupported Media Type"));
+    }
+
+    @Test
+    void login_getMethod_returns405ProblemDetail() throws Exception {
+        mvc.perform(get("/auth/login"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.type").value("urn:placement:method-not-allowed"))
+                .andExpect(jsonPath("$.title").value("Method Not Allowed"));
+    }
+
+    @Test
     void login_revokesOldTokens() throws Exception {
         TokenResponse first = register(STUDENT_EMAIL, Role.ROLE_STUDENT);
 
