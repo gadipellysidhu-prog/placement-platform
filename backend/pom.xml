@@ -224,6 +224,25 @@
                 </configuration>
             </plugin>
 
+            <!-- OWASP Dependency Check
+                 Run: mvn dependency-check:check
+                 Report: target/dependency-check-report.html
+                 Fails on CVSS >= 7 (HIGH + CRITICAL). Test-scope deps excluded. -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.4</version>
+                <configuration>
+                    <failBuildOnCVSS>7</failBuildOnCVSS>
+                    <formats>
+                        <format>HTML</format>
+                        <format>XML</format>
+                    </formats>
+                    <skipTestScope>true</skipTestScope>
+                    <nvdApiDelay>6000</nvdApiDelay>
+                </configuration>
+            </plugin>
+
             <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
