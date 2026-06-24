@@ -31,9 +31,14 @@ public class MetricsPlaceholderHandler {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onAnyDomainEvent(DomainEvent event) {
-        meterRegistry.counter(COUNTER_NAME, TAG_EVENT_TYPE, event.eventType()).increment();
-        log.debug("EVENT_HANDLED eventType={} handler=MetricsPlaceholderHandler counter={}",
-                event.eventType(), COUNTER_NAME);
+        try {
+            meterRegistry.counter(COUNTER_NAME, TAG_EVENT_TYPE, event.eventType()).increment();
+            log.debug("EVENT_HANDLED eventType={} handler=MetricsPlaceholderHandler counter={}",
+                    event.eventType(), COUNTER_NAME);
+        } catch (Exception ex) {
+            log.error("EVENT_FAILED eventType={} eventId={} handler=MetricsPlaceholderHandler exception={}",
+                    event.eventType(), event.eventId(), ex.getMessage(), ex);
+        }
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)

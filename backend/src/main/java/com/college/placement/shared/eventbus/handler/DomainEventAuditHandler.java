@@ -29,15 +29,20 @@ public class DomainEventAuditHandler {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onDomainEvent(DomainEvent event) {
-        log.info("EVENT_HANDLED eventType={} aggregateId={} handler=DomainEventAuditHandler",
-                event.eventType(), event.aggregateId());
+        try {
+            log.info("EVENT_HANDLED eventType={} aggregateId={} handler=DomainEventAuditHandler",
+                    event.eventType(), event.aggregateId());
 
-        AuditLog entry = new AuditLog();
-        entry.setEntityType(event.aggregateType());
-        entry.setEntityId(event.aggregateId().toString());
-        entry.setAction(event.eventType());
-        entry.setPerformedBy("system");
+            AuditLog entry = new AuditLog();
+            entry.setEntityType(event.aggregateType());
+            entry.setEntityId(event.aggregateId().toString());
+            entry.setAction(event.eventType());
+            entry.setPerformedBy("system");
 
-        auditLogRepository.save(entry);
+            auditLogRepository.save(entry);
+        } catch (Exception ex) {
+            log.error("EVENT_FAILED eventType={} eventId={} handler=DomainEventAuditHandler exception={}",
+                    event.eventType(), event.eventId(), ex.getMessage(), ex);
+        }
     }
 }
