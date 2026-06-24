@@ -6,10 +6,13 @@ frontend/node_modules/
 *.jar
 *.war
 
-# Secrets / local config
+# Secrets / local config — NEVER commit real credentials
 .env
+.env.*
 *.pem
 *.key
+private.pem
+public.pem
 
 # IDE
 .idea/

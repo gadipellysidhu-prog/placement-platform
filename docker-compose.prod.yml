@@ -1,0 +1,129 @@
+# Production Docker Compose Stack
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env.prod    # fill in all required values
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Startup order: postgres (healthy) → app (starts Flyway → Hibernate → HTTP)
+# Health validation:
+#   docker compose -f docker-compose.prod.yml ps
+#   curl -sf http://localhost:8081/actuator/health | jq .
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: placement-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-placement_prod}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Prevent initdb from creating a superuser password hint file
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - placement_prod_pgdata:/var/lib/postgresql/data
+    networks:
+      - placement-prod-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-placement_user} -d ${DB_NAME:-placement_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 256M
+    # Do NOT expose PostgreSQL port externally in production.
+    # Access via Docker network only.
+
+  # ── Spring Boot Application ────────────────────────────────────────────────
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: placement-platform:${APP_VERSION:-1.0.0}
+    container_name: placement-prod-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Spring profile — activates application-prod.yml
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database (required — no defaults in prod profile)
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-placement_prod}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # Server
+      SERVER_PORT: ${SERVER_PORT:-8081}
+
+      # JWT RS256 key pair (PEM — required; no ephemeral keys in production)
+      JWT_PRIVATE_KEY_PEM: ${JWT_PRIVATE_KEY_PEM}
+      JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM}
+      JWT_ACCESS_EXPIRY_MS: ${JWT_ACCESS_EXPIRY_MS:-900000}
+      JWT_REFRESH_EXPIRY_MS: ${JWT_REFRESH_EXPIRY_MS:-604800000}
+
+      # CORS — comma-separated list of allowed frontend origins
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+
+      # File upload
+      FILE_UPLOAD_DIR: /app/uploads
+      FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
+      FILE_MAX_MULTIPART_SIZE: ${FILE_MAX_MULTIPART_SIZE:-10MB}
+      FILE_SCAN_ENABLED: ${FILE_SCAN_ENABLED:-false}
+      CLAMAV_HOST: ${CLAMAV_HOST:-}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+
+    volumes:
+      # Persistent upload storage (survives container recreation)
+      - placement_prod_uploads:/app/uploads
+      # Explicit tmpfs for /tmp so the container filesystem can be read-only
+      # (tmpfs is declared here as a named volume using tmpfs driver)
+    ports:
+      - "${SERVER_PORT:-8081}:${SERVER_PORT:-8081}"
+    networks:
+      - placement-prod-network
+    healthcheck:
+      # Readiness probe — confirms Flyway complete + DB connected + HTTP serving
+      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:${SERVER_PORT:-8081}/actuator/health/readiness || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        tag: "placement-platform"
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  placement-prod-network:
+    driver: bridge
+    name: placement-prod-network
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  placement_prod_pgdata:
+    name: placement_prod_pgdata
+    driver: local
+  placement_prod_uploads:
+    name: placement_prod_uploads
+    driver: local
