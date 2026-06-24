@@ -44,10 +44,9 @@ jobs:
           if [ -n "$NVD_API_KEY" ]; then
             EXTRA="-DnvdApiKey=$NVD_API_KEY"
           fi
-          # Run via plugin coordinate — no pom.xml modification needed.
-          # Fails build on CVSS >= 9 (CRITICAL). Test-scope deps excluded.
+          # Fails build on CVSS >= 7 (HIGH+CRITICAL). Test-scope deps excluded.
           mvn org.owasp:dependency-check-maven:10.0.4:check \
-            -DfailBuildOnCVSS=9 \
+            -DfailBuildOnCVSS=7 \
             -Dformat=HTML,XML \
             -DskipTestScope=true \
             -DnvdApiDelay=6000 \

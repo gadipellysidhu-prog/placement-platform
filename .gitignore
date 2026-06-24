@@ -14,6 +14,15 @@ frontend/node_modules/
 private.pem
 public.pem
 
+# Backups — contain real database data, never commit
+backups/
+
+# k6 load test results
+load-tests/results/
+
+# nginx TLS certificates (mounted as volume in production)
+nginx/certs/*.pem
+
 # IDE
 .idea/
 *.iml

@@ -1,0 +1,6 @@
+# Place TLS certificates here:
+#   fullchain.pem — full certificate chain (cert + intermediates)
+#   privkey.pem   — private key
+#
+# These files are gitignored (*.pem) and must never be committed.
+# See deployment/deploy.sh for automated cert provisioning with Let's Encrypt.

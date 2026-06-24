@@ -263,6 +263,48 @@ jobs:
           docker stop "$CID" || true
           exit 1
 
+  # ── Stage 7b: Container Security Scan (Trivy) ────────────────────────────
+  container-scan:
+    name: "Stage 7b · Container Scan"
+    runs-on: ubuntu-latest
+    needs: docker-build
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image for scanning
+        working-directory: backend
+        run: docker build -t placement-platform:scan .
+
+      - name: Trivy — scan image for CRITICAL/HIGH CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'placement-platform:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container'
+
+      - name: Trivy — table summary (informational)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'placement-platform:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          ignore-unfixed: true
+          exit-code: '0'
+
   # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
   deployment-readiness:
     name: "Stage 8 · Deployment Readiness"
@@ -333,6 +375,7 @@ jobs:
       - code-quality
       - security-scan
       - docker-build
+      - container-scan
       - deployment-readiness
     if: always()
     steps:
@@ -344,6 +387,7 @@ jobs:
           R_QUALITY:     ${{ needs.code-quality.result }}
           R_SECURITY:    ${{ needs.security-scan.result }}
           R_DOCKER:      ${{ needs.docker-build.result }}
+          R_CONTAINER:   ${{ needs.container-scan.result }}
           R_READINESS:   ${{ needs.deployment-readiness.result }}
         run: |
           icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
@@ -355,18 +399,19 @@ jobs:
             echo ""
             echo "| Stage | Result |"
             echo "|-------|--------|"
-            echo "| Tests               | $(icon $R_TEST) \`$R_TEST\` |"
-            echo "| Package             | $(icon $R_PACKAGE) \`$R_PACKAGE\` |"
-            echo "| Flyway Validate     | $(icon $R_FLYWAY) \`$R_FLYWAY\` |"
-            echo "| Code Quality        | $(icon $R_QUALITY) \`$R_QUALITY\` |"
-            echo "| Secrets Scan        | $(icon $R_SECURITY) \`$R_SECURITY\` |"
-            echo "| Docker Build+Health | $(icon $R_DOCKER) \`$R_DOCKER\` |"
-            echo "| Deployment Readiness| $(icon $R_READINESS) \`$R_READINESS\` |"
+            echo "| Tests                | $(icon $R_TEST) \`$R_TEST\` |"
+            echo "| Package              | $(icon $R_PACKAGE) \`$R_PACKAGE\` |"
+            echo "| Flyway Validate      | $(icon $R_FLYWAY) \`$R_FLYWAY\` |"
+            echo "| Code Quality         | $(icon $R_QUALITY) \`$R_QUALITY\` |"
+            echo "| Secrets Scan         | $(icon $R_SECURITY) \`$R_SECURITY\` |"
+            echo "| Docker Build+Health  | $(icon $R_DOCKER) \`$R_DOCKER\` |"
+            echo "| Container CVE Scan   | $(icon $R_CONTAINER) \`$R_CONTAINER\` |"
+            echo "| Deployment Readiness | $(icon $R_READINESS) \`$R_READINESS\` |"
           } >> $GITHUB_STEP_SUMMARY
 
           # Fail if any critical gate failed
           for result in "$R_TEST" "$R_PACKAGE" "$R_FLYWAY" "$R_QUALITY" \
-                        "$R_DOCKER" "$R_READINESS"; do
+                        "$R_DOCKER" "$R_CONTAINER" "$R_READINESS"; do
             if [ "$result" = "failure" ]; then
               echo "::error::One or more critical pipeline gates failed."
               exit 1
