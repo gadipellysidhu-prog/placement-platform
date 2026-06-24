@@ -27,6 +27,11 @@ LABEL org.opencontainers.image.base.name="eclipse-temurin:17-jre-alpine"
 
 WORKDIR /app
 
+# Upgrade all Alpine packages to their latest patched versions.
+# This fixes OS-level CVEs that Trivy flags as "fixable" (i.e. a newer package
+# version exists in the Alpine repos). Must run before dropping to non-root.
+RUN apk upgrade --no-cache
+
 # Create non-root system user/group and grant /app ownership
 RUN addgroup -S appgroup && \
     adduser -S appuser -G appgroup && \

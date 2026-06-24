@@ -279,7 +279,7 @@ jobs:
         run: docker build -t placement-platform:scan .
 
       - name: Trivy — scan image for CRITICAL/HIGH CVEs
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: 'placement-platform:scan'
           format: 'sarif'
@@ -297,7 +297,7 @@ jobs:
 
       - name: Trivy — table summary (informational)
         if: always()
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: 'placement-platform:scan'
           format: 'table'
