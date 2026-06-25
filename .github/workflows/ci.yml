@@ -231,11 +231,26 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   # ── Stage 7: Docker Build & Container Startup Validation ──────────────────
+  # ── Stage 7: Docker Build & Container Startup Validation ──────────────────
   docker-build:
     name: "Stage 7 · Docker Build & Startup"
     runs-on: ubuntu-latest
     needs: package
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: placement_dev
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -248,17 +263,14 @@ jobs:
           docker image inspect placement-platform:ci \
             --format 'ID={{.Id}}  Size={{.Size}}  Created={{.Created}}'
 
-      - name: Container startup validation (no-DB mode — DataSource autoconfiguration excluded)
-        # H2 is test-scope only and is NOT packaged in the fat JAR.
-        # Using SPRING_AUTOCONFIGURE_EXCLUDE bypasses DataSource/JPA/Flyway startup
-        # so Actuator can initialise and respond UP without any database present.
-        # This validates the JVM, classpath, and Actuator wiring — not DB connectivity.
+      - name: Container startup validation (full-stack — application + PostgreSQL service)
         run: |
           CID=$(docker run -d \
-            -e SPRING_AUTOCONFIGURE_EXCLUDE="org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration" \
-            -e SPRING_JPA_OPEN_IN_VIEW=false \
+            --network host \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/placement_dev \
+            -e SPRING_DATASOURCE_USERNAME=postgres \
+            -e SPRING_DATASOURCE_PASSWORD=ci_test_password \
             -e SERVER_PORT=8081 \
-            -p 8081:8081 \
             placement-platform:ci)
           echo "Container: $CID"
 
@@ -274,13 +286,12 @@ jobs:
               docker stop "$CID"
               exit 0
             fi
-          done
+            done
 
           echo "::error::Container did not become healthy within 60 s"
           docker logs "$CID" 2>&1 | tail -60
           docker stop "$CID" || true
           exit 1
-
   # ── Stage 7b: Container Security Scan (Trivy) ────────────────────────────
   container-scan:
     name: "Stage 7b · Container Scan"
