@@ -20,7 +20,7 @@ FROM eclipse-temurin:17-jre-alpine
 
 # OCI standard image labels for registry discoverability and audit
 LABEL org.opencontainers.image.title="Placement Intelligence & Skill Verification Platform"
-LABEL org.opencontainers.image.description="Modular monolith: Spring Boot 3.3.5 / Java 17 / PostgreSQL 16"
+LABEL org.opencontainers.image.description="Modular monolith: Spring Boot 3.3.12 / Java 17 / PostgreSQL 16"
 LABEL org.opencontainers.image.vendor="College Placement Team"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.base.name="eclipse-temurin:17-jre-alpine"

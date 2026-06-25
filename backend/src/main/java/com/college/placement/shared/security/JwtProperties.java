@@ -7,5 +7,7 @@ public record JwtProperties(
     long accessTokenExpiryMs,
     long refreshTokenExpiryMs,
     String privateKeyPem,
-    String publicKeyPem
+    String publicKeyPem,
+    String issuer,
+    String audience
 ) {}

@@ -85,8 +85,12 @@ public class JobApplicationService {
     }
 
     @Transactional
-    public JobApplication withdraw(UUID applicationId) {
+    public JobApplication withdraw(UUID applicationId, UUID requesterStudentId) {
         JobApplication application = getById(applicationId);
+        if (!application.getStudent().getId().equals(requesterStudentId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only withdraw your own applications");
+        }
         if (application.getStatus() == ApplicationStatus.OFFERED
                 || application.getStatus() == ApplicationStatus.REJECTED
                 || application.getStatus() == ApplicationStatus.WITHDRAWN) {

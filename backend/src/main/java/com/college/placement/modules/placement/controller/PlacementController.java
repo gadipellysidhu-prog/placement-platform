@@ -43,7 +43,14 @@ public class PlacementController {
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Apply to a job posting")
-    public ResponseEntity<JobApplicationResponse> apply(@Valid @RequestBody JobApplicationCreateRequest req) {
+    public ResponseEntity<JobApplicationResponse> apply(@Valid @RequestBody JobApplicationCreateRequest req,
+                                                        Authentication auth) {
+        AppUser user = appUserRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student ownStudent = studentService.getByUser(user);
+        if (!ownStudent.getId().equals(req.studentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only apply for yourself");
+        }
         var application = jobApplicationService.apply(req.studentId(), req.jobPostingId());
         return ResponseEntity.status(HttpStatus.CREATED).body(JobApplicationResponse.from(application));
     }
@@ -94,7 +101,10 @@ public class PlacementController {
     @PostMapping("/{id}/withdraw")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Withdraw an application")
-    public ResponseEntity<JobApplicationResponse> withdraw(@PathVariable UUID id) {
-        return ResponseEntity.ok(JobApplicationResponse.from(jobApplicationService.withdraw(id)));
+    public ResponseEntity<JobApplicationResponse> withdraw(@PathVariable UUID id, Authentication auth) {
+        AppUser user = appUserRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student ownStudent = studentService.getByUser(user);
+        return ResponseEntity.ok(JobApplicationResponse.from(jobApplicationService.withdraw(id, ownStudent.getId())));
     }
 }

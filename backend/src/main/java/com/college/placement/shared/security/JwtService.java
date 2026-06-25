@@ -57,21 +57,32 @@ public class JwtService {
     public String generateAccessToken(String subject, String role) {
         Date now    = new Date();
         Date expiry = new Date(now.getTime() + properties.accessTokenExpiryMs());
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(subject)
                 .claim(CLAIM_ROLE, role)
                 .issuedAt(now)
                 .expiration(expiry)
-                .signWith(privateKey)
-                .compact();
+                .signWith(privateKey);
+        if (properties.issuer() != null && !properties.issuer().isBlank()) {
+            builder.issuer(properties.issuer());
+        }
+        if (properties.audience() != null && !properties.audience().isBlank()) {
+            builder.audience().add(properties.audience()).and();
+        }
+        return builder.compact();
     }
 
     public Optional<Claims> validateAndParse(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(publicKey)
-                    .build()
+            var parserBuilder = Jwts.parser().verifyWith(publicKey);
+            if (properties.issuer() != null && !properties.issuer().isBlank()) {
+                parserBuilder.requireIssuer(properties.issuer());
+            }
+            if (properties.audience() != null && !properties.audience().isBlank()) {
+                parserBuilder.requireAudience(properties.audience());
+            }
+            Claims claims = parserBuilder.build()
                     .parseSignedClaims(token)
                     .getPayload();
             return Optional.of(claims);
