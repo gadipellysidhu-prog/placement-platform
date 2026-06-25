@@ -15,6 +15,7 @@ jobs:
   owasp-dependency-check:
     name: OWASP Dependency Check
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +27,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Cache the NVD CVE database so weekly runs skip the 300 MB download
+      # Cache the NVD CVE database so weekly runs skip the ~300 MB download.
+      # The OWASP dependency-check Maven plugin stores its H2 database under
+      # ~/.dependency-check/data (not ~/.gradle — this project uses Maven).
       - name: Cache NVD database
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/dependency-check-data
+          path: ~/.dependency-check/data
           key: owasp-nvd-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             owasp-nvd-${{ runner.os }}-

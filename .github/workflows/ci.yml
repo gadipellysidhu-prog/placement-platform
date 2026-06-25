@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
 
+# Cancel in-progress runs on the same branch when a new push arrives.
+# Release branches (main/develop) are excluded so a concurrent deploy isn't cancelled mid-flight.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
+
 permissions:
   contents: read
 
@@ -17,6 +23,7 @@ jobs:
   compile:
     name: "Stage 1 · Compile"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +47,7 @@ jobs:
     name: "Stage 2 · Test"
     runs-on: ubuntu-latest
     needs: compile
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -80,6 +88,7 @@ jobs:
     name: "Stage 3 · Package"
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -120,6 +129,7 @@ jobs:
     name: "Stage 4 · Flyway Validate"
     runs-on: ubuntu-latest
     needs: compile
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -164,6 +174,7 @@ jobs:
     name: "Stage 5 · Code Quality"
     runs-on: ubuntu-latest
     needs: compile
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -204,6 +215,7 @@ jobs:
   security-scan:
     name: "Stage 6 · Secrets Scan"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -223,6 +235,7 @@ jobs:
     name: "Stage 7 · Docker Build & Startup"
     runs-on: ubuntu-latest
     needs: package
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -235,10 +248,19 @@ jobs:
           docker image inspect placement-platform:ci \
             --format 'ID={{.Id}}  Size={{.Size}}  Created={{.Created}}'
 
-      - name: Container startup validation (H2 test profile — no DB required)
+      - name: Container startup validation (no-DB mode — DataSource autoconfiguration excluded)
+        # H2 is test-scope only and is NOT packaged in the fat JAR.
+        # Using SPRING_AUTOCONFIGURE_EXCLUDE bypasses DataSource/JPA/Flyway startup
+        # so Actuator can initialise and respond UP without any database present.
+        # This validates the JVM, classpath, and Actuator wiring — not DB connectivity.
         run: |
           CID=$(docker run -d \
-            -e SPRING_PROFILES_ACTIVE=test \
+            -e SPRING_AUTOCONFIGURE_EXCLUDE="\
+org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,\
+org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,\
+org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration,\
+org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration" \
+            -e SPRING_JPA_OPEN_IN_VIEW=false \
             -e SERVER_PORT=8081 \
             -p 8081:8081 \
             placement-platform:ci)
@@ -268,6 +290,7 @@ jobs:
     name: "Stage 7b · Container Scan"
     runs-on: ubuntu-latest
     needs: docker-build
+    timeout-minutes: 20
     permissions:
       contents: read
       security-events: write
@@ -278,15 +301,32 @@ jobs:
         working-directory: backend
         run: docker build -t placement-platform:scan .
 
-      - name: Trivy — scan image for CRITICAL/HIGH CVEs
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: 'placement-platform:scan'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          ignore-unfixed: true
+      # Install Trivy CLI from the official apt repository.
+      # This approach is immune to GitHub Action tag availability issues
+      # (the previous aquasecurity/trivy-action@0.x.y pinned tag was not resolvable).
+      - name: Install Trivy
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y wget apt-transport-https gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" \
+            | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -q
+          sudo apt-get install -y trivy
+          trivy --version
+
+      - name: Trivy — scan image for CRITICAL/HIGH CVEs (SARIF)
+        run: |
+          trivy image \
+            --format sarif \
+            --output trivy-results.sarif \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --ignorefile backend/.trivyignore \
+            placement-platform:scan
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: always()
@@ -297,19 +337,21 @@ jobs:
 
       - name: Trivy — table summary (informational)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: 'placement-platform:scan'
-          format: 'table'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          ignore-unfixed: true
-          exit-code: '0'
+        run: |
+          trivy image \
+            --format table \
+            --severity CRITICAL,HIGH,MEDIUM \
+            --ignore-unfixed \
+            --ignorefile backend/.trivyignore \
+            --exit-code 0 \
+            placement-platform:scan
 
   # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
   deployment-readiness:
     name: "Stage 8 · Deployment Readiness"
     runs-on: ubuntu-latest
     needs: [package, flyway-validate]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
