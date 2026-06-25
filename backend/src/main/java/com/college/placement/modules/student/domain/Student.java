@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.BatchSize;
+
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -64,6 +66,7 @@ public class Student extends Auditable {
     private StudentStatus status = StudentStatus.ACTIVE;
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
         name = "student_skills",
         joinColumns = @JoinColumn(name = "student_id"),

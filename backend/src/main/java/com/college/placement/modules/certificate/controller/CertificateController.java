@@ -42,7 +42,14 @@ public class CertificateController {
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Submit a certificate for verification")
-    public ResponseEntity<CertificateResponse> submit(@Valid @RequestBody CertificateCreateRequest req) {
+    public ResponseEntity<CertificateResponse> submit(@Valid @RequestBody CertificateCreateRequest req,
+                                                      Authentication auth) {
+        AppUser user = appUserRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student ownStudent = studentService.getByUser(user);
+        if (!ownStudent.getId().equals(req.studentId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only submit certificates for yourself");
+        }
         var cert = certificateService.submitCertificate(
                 req.studentId(), req.name(), req.issuingOrganization(), req.skillId(), req.fileKey());
         return ResponseEntity.status(HttpStatus.CREATED).body(CertificateResponse.from(cert));

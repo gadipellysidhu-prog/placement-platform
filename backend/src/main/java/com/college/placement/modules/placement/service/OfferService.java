@@ -69,8 +69,12 @@ public class OfferService {
     }
 
     @Transactional
-    public Offer acceptOffer(UUID offerId) {
+    public Offer acceptOffer(UUID offerId, UUID requesterStudentId) {
         Offer offer = getById(offerId);
+        if (!offer.getApplication().getStudent().getId().equals(requesterStudentId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only accept your own offers");
+        }
         requirePending(offer);
         offer.setStatus(OfferStatus.ACCEPTED);
         offerRepository.save(offer);
@@ -88,8 +92,12 @@ public class OfferService {
     }
 
     @Transactional
-    public Offer rejectOffer(UUID offerId) {
+    public Offer rejectOffer(UUID offerId, UUID requesterStudentId) {
         Offer offer = getById(offerId);
+        if (!offer.getApplication().getStudent().getId().equals(requesterStudentId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only reject your own offers");
+        }
         requirePending(offer);
         offer.setStatus(OfferStatus.REJECTED);
         offerRepository.save(offer);

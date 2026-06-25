@@ -1,0 +1,11 @@
+# Trivy ignore file for placement-platform
+# Only suppress CVEs that:
+#   (a) have been assessed and accepted as low-risk in this deployment context, OR
+#   (b) have no available fix upstream (Trivy's ignore-unfixed flag handles most of these)
+#
+# Format: one CVE-ID per line. Add a comment explaining the acceptance rationale.
+#
+# Currently empty — all fixable CVEs are addressed via:
+#   1. apk upgrade --no-cache in Dockerfile (OS-level CVEs)
+#   2. Spring Boot 3.3.12 (Java library CVEs patched in 3.3.5→3.3.12)
+#   3. Unfixable CVEs filtered by --ignore-unfixed in the Trivy action

@@ -44,6 +44,6 @@ public class SecurityStartupValidator {
             );
         }
 
-        log.info("SECURITY_EVENT event=STARTUP_VALIDATION_PASSED profile=prod secrets_verified={}", missing.size() == 0 ? "all" : "partial");
+        log.info("SECURITY_EVENT event=STARTUP_VALIDATION_PASSED profile=prod secrets_verified=all");
     }
 }

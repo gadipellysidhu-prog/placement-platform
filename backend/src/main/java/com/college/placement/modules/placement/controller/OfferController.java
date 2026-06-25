@@ -88,15 +88,21 @@ public class OfferController {
     @PostMapping("/{id}/accept")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Accept a PENDING offer")
-    public ResponseEntity<OfferResponse> accept(@PathVariable UUID id) {
-        return ResponseEntity.ok(OfferResponse.from(offerService.acceptOffer(id)));
+    public ResponseEntity<OfferResponse> accept(@PathVariable UUID id, Authentication auth) {
+        AppUser user = appUserRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student ownStudent = studentService.getByUser(user);
+        return ResponseEntity.ok(OfferResponse.from(offerService.acceptOffer(id, ownStudent.getId())));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Reject a PENDING offer")
-    public ResponseEntity<OfferResponse> reject(@PathVariable UUID id) {
-        return ResponseEntity.ok(OfferResponse.from(offerService.rejectOffer(id)));
+    public ResponseEntity<OfferResponse> reject(@PathVariable UUID id, Authentication auth) {
+        AppUser user = appUserRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student ownStudent = studentService.getByUser(user);
+        return ResponseEntity.ok(OfferResponse.from(offerService.rejectOffer(id, ownStudent.getId())));
     }
 
     @PostMapping("/{id}/expire")

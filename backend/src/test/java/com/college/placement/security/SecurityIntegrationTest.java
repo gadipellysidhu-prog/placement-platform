@@ -277,6 +277,38 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void actuator_metrics_returns403WhenPlacementOfficerAuthenticated() throws Exception {
+        // Placement Officer is below ADMIN in the hierarchy; actuator requires ROLE_ADMIN explicitly
+        TokenResponse tokens = register("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+
+        mvc.perform(get("/actuator/metrics")
+                        .header("Authorization", "Bearer " + tokens.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
+    }
+
+    @Test
+    void actuator_prometheus_returns403WhenPlacementOfficerAuthenticated() throws Exception {
+        TokenResponse tokens = register("officer2@test.com", Role.ROLE_PLACEMENT_OFFICER);
+
+        mvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", "Bearer " + tokens.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
+    }
+
+    @Test
+    void forbiddenEndpoint_placementOfficerAccessingAdminEndpoint_returns403() throws Exception {
+        // Placement Officer inherits Student permissions but not Admin-only endpoints
+        TokenResponse tokens = register("officer3@test.com", Role.ROLE_PLACEMENT_OFFICER);
+
+        mvc.perform(get("/api/users/admin-only")
+                        .header("Authorization", "Bearer " + tokens.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
+    }
+
+    @Test
     void actuator_metrics_returns200WhenAdminAuthenticated() throws Exception {
         TokenResponse tokens = register(ADMIN_EMAIL, Role.ROLE_ADMIN);
 
