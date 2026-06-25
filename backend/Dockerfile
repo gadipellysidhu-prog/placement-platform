@@ -62,5 +62,8 @@ ENTRYPOINT ["java", \
     "-XX:InitialRAMPercentage=50.0", \
     "-XX:MaxRAMPercentage=75.0", \
     "-XX:+ExitOnOutOfMemoryError", \
+    "-Djava.security.egd=file:/dev/urandom", \
+    "-Dspring.jmx.enabled=false", \
+    "-Dfile.encoding=UTF-8", \
     "-Duser.timezone=Asia/Kolkata", \
     "-jar", "app.jar"]

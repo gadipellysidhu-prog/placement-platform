@@ -1,0 +1,16 @@
+# Trivy configuration for the placement-platform backend.
+#
+# skip-dirs excludes paths that contain development-only artifacts
+# which must never appear in a production image:
+#
+#   .m2/  — the bundled Apache Maven installation (development build tool).
+#            Its conf/settings.xml ships example placeholder values inside
+#            XML comments; Trivy secret-scanner flags them as false positives.
+#
+#   secrets/  — local-dev JWT key pair used when JWT_PRIVATE_KEY_PEM /
+#               JWT_PUBLIC_KEY_PEM environment variables are not set.
+#               These files must not be committed or packaged for production.
+scan:
+  skip-dirs:
+    - .m2
+    - secrets

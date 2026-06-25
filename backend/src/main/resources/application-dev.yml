@@ -7,6 +7,9 @@ spring:
 
   jpa:
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
 # In development, /actuator/health shows full component details (db, diskSpace, ...).
 management:
