@@ -92,8 +92,8 @@
 | Officer: Companies list + management | P1 | Medium | `GET /api/companies`, `POST`, `PUT` |
 | Officer: Company activate/deactivate | P1 | Low | `POST /api/companies/{id}/activate` |
 | Admin: Company blacklist | P2 | Low | `POST /api/companies/{id}/blacklist` |
-| Skill assignment (blocked — no API) | BLOCKED | — | Needs Skills API |
-| Branch selector (blocked — no API) | BLOCKED | — | Needs Branches API |
+| Skill assignment | P1 | Low | `POST /api/students/{id}/skills/{skillId}` + `GET /api/skills` (✅ unblocked Phase 0.75) |
+| Branch selector | P1 | Low | `GET /api/branches` + `branchId` in student form (✅ unblocked Phase 0.75) |
 
 **Exit Criteria:**
 - Student can view own profile and dashboard
@@ -164,9 +164,9 @@
 
 | Feature | Priority | Complexity | Backend Dependency |
 |---|---|---|---|
-| Officer dashboard stats | P0 | Medium | Multiple APIs (counts from list sizes — placeholder until analytics) |
-| Skills management page (blocked) | BLOCKED | — | Needs Skills API |
-| Branches management page (blocked) | BLOCKED | — | Needs Branches API |
+| Officer dashboard stats | P0 | Low | `GET /api/dashboard/summary` (✅ real endpoint, unblocked Phase 0.75) |
+| Skills management page | P1 | Medium | `GET/POST/PUT /api/skills`, `POST /api/skills/{id}/verify` (✅ unblocked Phase 0.75) |
+| Branches management page | P1 | Low | `GET/POST/PUT /api/branches` (✅ unblocked Phase 0.75) |
 | Admin: User management page | P2 | Low | `POST /auth/register` (workaround) |
 | Admin: Blacklist companies | P2 | Low | `POST /api/companies/{id}/blacklist` |
 | Audit log page (blocked) | BLOCKED | — | Needs Audit API |
@@ -241,12 +241,54 @@
 
 ---
 
+---
+
+## Review Checkpoints
+
+Each milestone ends with a mandatory review before the next begins:
+
+| Checkpoint | Criteria |
+|---|---|
+| After M1 | Auth flows tested E2E against real backend; token refresh verified; layouts reviewed at all breakpoints |
+| After M2 | Student and company CRUD flows working; blocked features showing correct banners |
+| After M3 | Full job posting lifecycle and application status workflow verified; 409 handling correct |
+| After M4 | File upload + scan status; offer accept/reject; certificate submission — all E2E tested |
+| After M5 | Dashboard metrics accurate; role-gated actions verified |
+| After M6 | Lighthouse ≥ 90 Performance, ≥ 95 Accessibility; zero axe violations; bundle < 500KB gzip |
+| After M7 | Production build connects to live backend; CORS verified; no console errors |
+
+---
+
+## Blocked Feature Strategy
+
+Features blocked by missing backend endpoints follow a consistent pattern:
+
+1. **Build the page shell** — route, navigation entry, page component — but render a `<BlockedFeatureBanner>` in the content area.
+2. **Banner content:** "This feature requires [Skill/Branch/Analytics] API (see BACKEND_COMPATIBILITY.md). Expected: when backend adds the controller."
+3. **Do not disable routes.** The page must be reachable so officers see the expected navigation structure.
+4. **Forms that require blocked data** (e.g., branch selector in student create form) — make the field optional and note it with inline hint text.
+5. **When the backend gap is resolved:** Remove the banner, wire up the real API. No page restructuring should be required because the shell already exists.
+
+| Feature | Status | Notes |
+|---|---|---|
+| Branch selector | ✅ **Unblocked** (Phase 0.75) | `GET /api/branches` — wire up branch dropdown in M2 |
+| Skill selector | ✅ **Unblocked** (Phase 0.75) | `GET /api/skills` — wire up skill selector in M2/M4 |
+| Dashboard metrics | ✅ **Unblocked** (Phase 0.75) | `GET /api/dashboard/summary` — use in M5 |
+| Forgot password | ❌ Blocked | Backend email stub (HIGH-5); M1 stub page only |
+| Officer all-status job postings | ❌ Blocked | HIGH-4 still missing; M3 shows OPEN only with banner |
+| Notifications | ❌ Blocked | No Notification API; bell with "0" placeholder |
+| Audit log | ❌ Blocked | No Audit log REST API |
+
+---
+
 ## Risk Register
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| Skills/Branches API not added before frontend M2 | Medium | High | Build UI skeletons, show "coming soon" banners; decouple student form from branch/skill fields |
-| Analytics API not added before M5 | High | Medium | Show placeholder stat cards with "--" values; design dashboard to gracefully handle absent data |
-| Password reset/email verification never implemented | Medium | Low | Show "Feature not available" notice on forgot-password page |
-| Backend role restriction on register not fixed | Low | High | Frontend shows STUDENT role only in register dropdown as a UX safeguard; document the security gap |
-| Token storage XSS risk | Low | High | Keep access tokens in memory (Zustand), refresh in localStorage with short-lived access tokens |
+| ~~Skills/Branches API not added before M2~~ | — | — | **Resolved in Phase 0.75** — Branch and Skill REST APIs implemented |
+| ~~Analytics API not added before M5~~ | — | — | **Resolved in Phase 0.75** — `GET /api/dashboard/summary` implemented |
+| Password reset/email verification never implemented | Medium | Low | Stub page with generic "check your inbox" message always |
+| ~~Backend role restriction on register not fixed~~ | — | — | **Resolved in Phase 0.75** — register now rejects non-STUDENT roles with 400 |
+| Token storage XSS risk | Low | High | Access token in Zustand memory only; refresh token in localStorage (acceptable tradeoff) |
+| Refresh token race condition (concurrent 401s) | Medium | High | Implement queue-based refresh: one in-flight refresh, other requests wait and retry |
+| File scan async state | Medium | Medium | Poll or block certificate submission until scan status is CLEAN |

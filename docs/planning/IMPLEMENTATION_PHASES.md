@@ -35,7 +35,10 @@
 
 ## Phase 1: Foundation and Authentication
 
-**Status:** Pending approval to start
+**Status:** Pending approval to start  
+**Effort estimate:** 4–6 days  
+**Complexity:** Medium  
+**Risk:** Low — all backend auth endpoints are verified and working.
 
 **Objective:** Create a runnable React application with complete authentication, routing infrastructure, shared layouts, and base design system.
 
@@ -99,15 +102,26 @@
 
 - [ ] `npm run build` succeeds (zero TypeScript errors)
 - [ ] `npm run lint` passes
-- [ ] `npm run test` passes
+- [ ] `npm run test` passes (≥ 80% coverage on auth module)
 - [ ] Login flow works end-to-end with real backend
-- [ ] Register flow works end-to-end
-- [ ] Logout clears state and redirects
-- [ ] Token refresh works silently on 401
+- [ ] Register flow works end-to-end (STUDENT role only exposed)
+- [ ] Logout clears state and redirects to /login
+- [ ] Token refresh works silently on 401 (interceptor test)
 - [ ] Unauthenticated user redirected to /login from protected route
 - [ ] Wrong-role user redirected to /403
 - [ ] Session survives page refresh (rehydration from refresh token)
-- [ ] AuthLayout and DashboardLayout render correctly at all breakpoints
+- [ ] AuthLayout and DashboardLayout render correctly at 375px, 768px, 1024px, 1440px
+- [ ] No console errors or unhandled promise rejections in browser
+
+### Risks
+
+- **Refresh token race condition:** Multiple concurrent 401 responses can trigger multiple refresh calls. Mitigate with a refresh-in-progress flag and a queue of waiting requests in the Axios interceptor.
+- **XSS:** Access token stays in Zustand memory only. Refresh token in `localStorage` is acceptable given short access-token lifetime (15 min). Never store access token in localStorage.
+
+### Performance Targets
+
+- Initial bundle: < 200KB gzipped (auth + layout only, no domain code loaded)
+- LCP on `/login`: < 1.5s on 3G simulation
 
 ### Dependencies
 
@@ -118,7 +132,9 @@
 
 ## Phase 2: Core Domain — Students and Companies
 
-**Status:** Pending Phase 1 approval
+**Status:** Pending Phase 1 approval  
+**Effort estimate:** 6–8 days  
+**Complexity:** Medium-High — many page variants, officer vs. student views differ significantly.
 
 **Objective:** Implement the student domain (self-service + officer management) and company browsing/management.
 
@@ -164,19 +180,26 @@
 
 All student and company endpoints from API_CONTRACT.md.
 
-### Blocked Features (document with banners)
+### Previously Blocked Features (now unblocked — Phase 0.75)
 
-- Branch selector (CRITICAL-1: no Branch API)
-- Skill selector/assignment from UI (CRITICAL-2: no Skill API)
+- Branch selector — `GET /api/branches` is now implemented; wire up branch dropdown in student create/update forms
+- Skill selector/assignment — `GET /api/skills` is now implemented; wire up skill selector and `POST /api/students/{id}/skills/{skillId}`
 
 ### Exit Criteria
 
-- [ ] All quality gates pass
-- [ ] Officer can list and manage students
-- [ ] Student can view own profile
-- [ ] Companies list and detail work for students
-- [ ] Officer can create and manage companies
-- [ ] Blocked features show informative banners
+- [ ] All quality gates pass (build, lint, typecheck, test ≥ 80%)
+- [ ] Officer can list, search (client-side), view, create, and update students
+- [ ] Student can view own profile (`GET /api/students/me`)
+- [ ] Companies list and detail work for both roles
+- [ ] Officer can create, activate, deactivate companies
+- [ ] DataTable pagination works correctly (page/size params passed to API)
+- [ ] Blocked features (branch selector, skill selector) show informative "coming soon" banners — no broken UI
+- [ ] No N+1 fetch patterns (use TanStack Query caching correctly)
+
+### Risks
+
+- **Branch/Skill blockers:** `POST /api/students` requires `branchId` but no Branch API exists. Workaround: make `branchId` optional in the creation form with a note; officers can assign branch later once API is available.
+- **Unbounded list responses:** `GET /api/applications/my` and `GET /api/offers/my` return unbounded lists. Frontend must gracefully handle large arrays without crashing.
 
 ### Dependencies
 
@@ -187,7 +210,9 @@ All student and company endpoints from API_CONTRACT.md.
 
 ## Phase 3: Job Postings and Applications
 
-**Status:** Pending Phase 2 approval
+**Status:** Pending Phase 2 approval  
+**Effort estimate:** 5–7 days  
+**Complexity:** High — status state machine, multi-step workflow, dual officer/student views.
 
 **Objective:** Implement the complete job posting lifecycle and student application workflow.
 
@@ -210,10 +235,18 @@ All student and company endpoints from API_CONTRACT.md.
 ### Exit Criteria
 
 - [ ] All quality gates pass
-- [ ] Student can browse open postings and apply
-- [ ] Student can view and withdraw own applications
-- [ ] Officer can manage full job posting lifecycle
-- [ ] Officer can update application status through all stages
+- [ ] Student can browse OPEN postings, apply, and see their application in the list
+- [ ] Student cannot apply twice (duplicate blocked by backend 409 — show toast)
+- [ ] Student can withdraw from APPLIED/SHORTLISTED applications
+- [ ] Officer can create DRAFT, open, close, and cancel postings
+- [ ] Officer can view applications and move them through all status stages
+- [ ] `ApplicationStatusStepper` shows correct current step
+- [ ] 409 Conflict errors surfaced to user correctly (not silently swallowed)
+
+### Risks
+
+- **Missing officer job postings endpoint (HIGH-4):** Officers cannot fetch DRAFT/CLOSED postings — `GET /api/job-postings` returns OPEN only. Workaround: use the same student endpoint for the officer list, acknowledging it shows only OPEN. Design the officer UI to show a warning banner until the backend gap is resolved. Document as a known limitation.
+- **Status machine enforcement:** The frontend should enforce only valid transitions (e.g., disable buttons for invalid next states) to prevent wasted 409 round-trips.
 
 ### Dependencies
 
@@ -224,7 +257,9 @@ All student and company endpoints from API_CONTRACT.md.
 
 ## Phase 4: Offers, Certificates, and File Upload
 
-**Status:** Pending Phase 3 approval
+**Status:** Pending Phase 3 approval  
+**Effort estimate:** 5–6 days  
+**Complexity:** High — file upload with async virus scan state, multi-step certificate flow.
 
 **Objective:** Complete offer management and the certificate submission/verification workflow including file uploads.
 
@@ -252,11 +287,18 @@ All student and company endpoints from API_CONTRACT.md.
 ### Exit Criteria
 
 - [ ] All quality gates pass
-- [ ] File upload works with scan status feedback
-- [ ] Student can accept/reject offers with confirmation dialog
-- [ ] Student can submit certificates with file
-- [ ] Officer can verify/reject certificates
-- [ ] File download works from certificate detail
+- [ ] File upload works: progress indicator, scan status badge (CLEAN/PENDING/INFECTED), error on > 10MB
+- [ ] Infected file upload is rejected with user-visible error (`422` → "File is infected")
+- [ ] Student can accept or reject PENDING offers with confirmation dialog
+- [ ] Student can submit certificate form with an uploaded file's UUID as `fileKey`
+- [ ] `fileKey` UUID correctly maps to `/api/files/{fileKey}` download URL in the UI
+- [ ] Officer can verify and reject certificates (queue empties as items are actioned)
+- [ ] Skill selector in certificate form disabled with "coming soon" when no Skill API
+
+### Risks
+
+- **Virus scan is async:** After upload, scan status may be `PENDING`. The frontend must handle this state — show a spinner/badge, and re-poll (or re-fetch on page revisit). Do not allow submitting a certificate with a `PENDING` scan status.
+- **Skill API still missing:** Certificate form field `skillId` cannot be populated. Make it optional in UI with a banner explaining the limitation.
 
 ### Dependencies
 
@@ -267,21 +309,20 @@ All student and company endpoints from API_CONTRACT.md.
 
 ## Phase 5: Officer Dashboard and Admin Views
 
-**Status:** Pending Phase 4 approval
+**Status:** Pending Phase 4 approval  
+**Effort estimate:** 3–4 days  
+**Complexity:** Low-Medium — mostly data aggregation from existing APIs.
 
 **Objective:** Complete the officer dashboard with real data and implement admin-specific capabilities.
 
 ### Deliverables
 
-1. **Officer dashboard** — populated stat cards using data from existing APIs
-   - Total students: count from `GET /api/students` total elements
-   - Active companies: count from `GET /api/companies` (filter ACTIVE client-side or via total)
-   - Open postings: from `GET /api/job-postings`
-   - Pending applications: from `GET /api/applications` (filter APPLIED)
-   - Pending certificates: from `GET /api/certificates` (filter PENDING)
-2. **Blocked pages with banners:**
-   - Skills management page — "Skills API coming soon"
-   - Branches management page — "Branches API coming soon"
+1. **Officer dashboard** — populated stat cards using `GET /api/dashboard/summary` (✅ real endpoint available since Phase 0.75)
+   - Single request returns: `totalStudents`, `placedStudents`, `activeCompanies`, `openJobPostings`, `pendingApplications`, `pendingCertificates`, `placementRatePercent`
+2. **Previously blocked pages (now implementable):**
+   - Skills management page — wire to `GET/POST/PUT /api/skills`, `POST /api/skills/{id}/verify`
+   - Branches management page — wire to `GET/POST/PUT /api/branches`, activate/deactivate
+3. **Still-blocked pages (show banner):**
    - Audit log page — "Audit API coming soon"
 3. **Admin capabilities:**
    - Company blacklist button (visible only to ROLE_ADMIN)
@@ -290,9 +331,16 @@ All student and company endpoints from API_CONTRACT.md.
 ### Exit Criteria
 
 - [ ] All quality gates pass
-- [ ] Officer dashboard shows real aggregated metrics
-- [ ] Admin-only actions are role-gated and visible only to ROLE_ADMIN
-- [ ] Blocked features are clearly communicated with expected status
+- [ ] Officer dashboard shows real counts from `GET /api/dashboard/summary`
+- [ ] Dashboard renders correctly when the summary API call fails (graceful error state)
+- [ ] Admin-only buttons (blacklist, user creation) render only when `role === 'ROLE_ADMIN'`
+- [ ] Skills and Branches management pages are fully wired to their REST APIs (no longer blocked)
+- [ ] Audit log page shows "coming soon" banner
+- [ ] Notification bell renders with count "0" (placeholder)
+
+### Risks
+
+- **Analytics API (CRITICAL-3 — resolved):** `GET /api/dashboard/summary` now exists. Use it directly; no fallback needed.
 
 ### Dependencies
 

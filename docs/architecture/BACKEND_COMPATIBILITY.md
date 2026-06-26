@@ -1,7 +1,7 @@
 # BACKEND_COMPATIBILITY.md
 ## Backend Gap Analysis for Frontend Integration
 
-**Audit Date:** 2026-06-26
+**Audit Date:** 2026-06-26 | **Refined:** 2026-06-27
 **Source:** Verified from backend source code
 **Purpose:** Identify gaps, inconsistencies, and missing features the frontend needs but the backend does not yet provide.
 
@@ -9,67 +9,68 @@
 
 ## Summary
 
-| Severity | Count |
-|---|---|
-| Critical | 3 |
-| High | 6 |
-| Medium | 7 |
-| Low | 5 |
+| Severity | Count | Notes |
+|---|---|---|
+| Critical | ~~3~~ **0** | All 3 resolved in Phase 0.75 |
+| High | 6 | |
+| Medium | 7 | |
+| Low | 5 | |
 
 ---
 
-## Critical Gaps
+## ✅ Resolved Critical Gaps (Phase 0.75)
 
-### CRITICAL-1: No Branch REST API
+### ~~CRITICAL-1~~: Branch REST API — **RESOLVED**
 
-**Problem:** `BranchService` has full CRUD (`createBranch`, `updateBranch`, `getAll`, `getActiveBranches`, `deactivate`, `activate`). No `BranchController` exists.
-
-**Frontend Impact:**
-- `POST /api/students` requires a `branchId` but there is no way to list/search branches to populate a dropdown.
-- `StudentCreateRequest` and `StudentUpdateRequest` both accept `branchId` as a parameter.
-- Students can never be properly assigned to a branch from the frontend without this endpoint.
-
-**Required Endpoints:**
-- `GET /api/branches` — list all/active branches
-- `GET /api/branches/{id}` — get branch by ID
-- `POST /api/branches` (PLACEMENT_OFFICER) — create branch
-- `PUT /api/branches/{id}` (PLACEMENT_OFFICER) — update branch
-- `POST /api/branches/{id}/deactivate` (PLACEMENT_OFFICER)
-- `POST /api/branches/{id}/activate` (PLACEMENT_OFFICER)
-
-**Recommended DTO (inferred from entity):**
-```json
-{
-  "id": "UUID",
-  "name": "string",
-  "code": "string | null",
-  "description": "string | null",
-  "active": "boolean",
-  "createdAt": "ISO-8601",
-  "updatedAt": "ISO-8601"
-}
-```
+`BranchController` added at `/api/branches` with full CRUD + activate/deactivate. Integration tests pass.
+Frontend can now populate branch dropdowns via `GET /api/branches`.
 
 ---
 
-### CRITICAL-2: No Skill REST API
+### ~~CRITICAL-2~~: Skill REST API — **RESOLVED**
 
-**Problem:** `SkillService` has full operations (`createSkill`, `verify`, `getAll`, `getByCategory`, `getVerified`). No `SkillController` exists.
+`SkillController` added at `/api/skills` with list/filter/create/update/verify. Integration tests pass.
+Frontend can now populate skill selectors via `GET /api/skills` and `GET /api/skills?category=X`.
 
-**Frontend Impact:**
-- `POST /api/students/{id}/skills/{skillId}` requires a `skillId` but there is no way to list/search skills to populate a selector.
-- `POST /api/certificates` accepts a `skillId` with no way to browse skills.
-- Certificate submission flow is broken without skill discovery.
+---
 
-**Required Endpoints:**
-- `GET /api/skills` — list all skills
-- `GET /api/skills?category=X` — filter by category
-- `GET /api/skills?verified=true` — list verified only
-- `GET /api/skills/{id}` — get skill by ID
-- `POST /api/skills` (PLACEMENT_OFFICER) — create skill
-- `POST /api/skills/{id}/verify` (PLACEMENT_OFFICER) — verify skill
+### ~~CRITICAL-3~~: Dashboard / Analytics Endpoint — **RESOLVED**
 
-**Recommended DTO (inferred from entity):**
+`DashboardController` added at `GET /api/dashboard/summary`. Returns `totalStudents`, `placedStudents`, `activeCompanies`, `openJobPostings`, `pendingApplications`, `pendingCertificates`, `placementRatePercent`. Integration tests pass.
+
+---
+
+## Former Critical Gaps (kept for history)
+
+### CRITICAL-1 (RESOLVED): No Branch REST API
+
+**Problem:** `BranchService` has full CRUD (`createBranch`, `updateBranch`, `getAll`, `getActiveBranches`, `deactivate`, `activate`). No `BranchController` existed.
+
+**Resolved:** `BranchController` at `/api/branches`. See API_CONTRACT.md for endpoint details.
+
+---
+
+### CRITICAL-2 (RESOLVED): No Skill REST API
+
+**Problem:** `SkillService` had full operations (`createSkill`, `verify`, `getAll`, `getByCategory`, `getVerified`). No `SkillController` existed.
+
+**Resolved:** `SkillController` at `/api/skills`. Also added `updateSkill()` to `SkillService`. See API_CONTRACT.md for endpoint details.
+
+---
+
+### CRITICAL-3 (RESOLVED): No Dashboard / Analytics Endpoint
+
+**Problem:** No summary statistics endpoint existed.
+
+**Resolved:** `DashboardController` at `GET /api/dashboard/summary` in `modules/dashboard`. See API_CONTRACT.md for response shape.
+
+---
+
+## High Severity Gaps
+
+*(Previously listed as "Critical Gaps" section. Renumbered after CRITICAL-1/2/3 resolution.)*
+
+### FORMER CRITICAL-2 CONTEXT — DTO reference (for history):
 ```json
 {
   "id": "UUID",
@@ -311,3 +312,137 @@
 The `POST /auth/register` endpoint accepts any `Role` enum value including `ROLE_ADMIN`. In production, this is a significant security gap — any user could self-register as an admin. The backend currently does not restrict registration to `ROLE_STUDENT` only.
 
 **Recommendation:** Restrict `/auth/register` to `ROLE_STUDENT` only; require an admin-only endpoint (e.g., `POST /api/admin/users`) to create officer/admin accounts.
+
+---
+
+## Frontend Integration Reference
+
+### Error Response Format (RFC 7807 ProblemDetail)
+
+All error responses use `Content-Type: application/problem+json`:
+
+```json
+{
+  "type": "urn:placement:<error-code>",
+  "title": "Human-readable title",
+  "status": 400,
+  "detail": "Optional detail message",
+  "errors": ["fieldName: message", "otherField: message"]
+}
+```
+
+- `errors` array is **only present on 400 validation failures**
+- For 401/403/404/409/422/500: `type`, `title`, `status`, `detail` only
+- Frontend must check `response.data.errors` (array) for field-level validation display
+- Frontend must check `response.data.detail` for non-field errors (conflict, not found, etc.)
+
+**Mapping for Zod-based form error display:**
+```typescript
+// Parse errors array: "fieldName: message" → { fieldName: "message" }
+errors.forEach(e => {
+  const [field, ...rest] = e.split(': ');
+  setError(field, { message: rest.join(': ') });
+});
+```
+
+---
+
+### Date and Time Conventions
+
+| Field type | Format | Example | Notes |
+|---|---|---|---|
+| Timestamp (audit) | ISO-8601 Instant | `"2026-06-27T10:30:00Z"` | `createdAt`, `updatedAt` — always UTC |
+| Date-only | ISO-8601 date | `"2027-07-01"` | `applicationDeadline`, `joiningDate` — no time component |
+| Token expiry | milliseconds (long) | `900000` | `accessTokenExpiresIn` — 15 minutes in ms |
+
+**Frontend rule:** Always use `new Date(isoString)` for display formatting. Never assume timezone. Format with `Intl.DateTimeFormat` in the user's local timezone for display; send dates to the API in `YYYY-MM-DD` format only (no timezone for date-only fields).
+
+---
+
+### Enum Reference
+
+All enum values sent to and received from the API:
+
+**Role** (auth — `POST /auth/register`)
+`ROLE_STUDENT` | `ROLE_PLACEMENT_OFFICER` | `ROLE_ADMIN`
+> Frontend should only expose `ROLE_STUDENT` in the registration dropdown (security safeguard).
+
+**StudentStatus** (`PUT /api/students/{id}/status`)
+`ACTIVE` | `PLACED` | `OPTED_OUT` | `GRADUATED` | `BLOCKED`
+
+**CompanyStatus** (read-only in response; changed via `/activate`, `/deactivate`, `/blacklist`)
+`ACTIVE` | `INACTIVE` | `BLACKLISTED`
+
+**JobPostingStatus** (read-only in response; changed via `/open`, `/close`, `/cancel`)
+`DRAFT` | `OPEN` | `CLOSED` | `CANCELLED`
+
+**ApplicationStatus** (`PUT /api/applications/{id}/status`)
+`APPLIED` | `SHORTLISTED` | `INTERVIEWED` | `OFFERED` | `REJECTED` | `WITHDRAWN`
+> `WITHDRAWN` is set only via `POST /api/applications/{id}/withdraw`
+
+**OfferStatus** (changed via `/accept`, `/reject`, `/expire`)
+`PENDING` | `ACCEPTED` | `REJECTED` | `EXPIRED`
+
+**CertificateVerificationStatus** (changed via `/verify`, `/reject`)
+`PENDING` | `VERIFIED` | `REJECTED`
+
+**FileScanStatus** (returned in `FileUploadResponse`, not settable by frontend)
+`CLEAN` | `PENDING` | `INFECTED` | `SCAN_ERROR`
+
+---
+
+### Required Frontend Environment Variables
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:8081` |
+
+No other environment variables are required for the frontend itself. The backend reads its own env vars (database URL, JWT keys, S3 config, etc.) separately.
+
+> For production, `VITE_API_BASE_URL` must match the backend's `CORS_ALLOWED_ORIGINS` setting in `.env.prod`.
+
+---
+
+### Pagination and Filtering
+
+**Paginated endpoints** (return Spring `Page<T>`):
+- `GET /api/students` — page, size, sort
+- `GET /api/companies` — page, size, sort
+- `GET /api/job-postings` — page, size, sort
+- `GET /api/applications` — page, size, sort
+- `GET /api/offers` — page, size, sort
+- `GET /api/certificates` — page, size, sort
+
+**Unbounded list endpoints** (return `List<T>` — no pagination params accepted):
+- `GET /api/applications/my`
+- `GET /api/applications/student/{studentId}`
+- `GET /api/certificates/my`
+- `GET /api/certificates/student/{studentId}`
+- `GET /api/offers/my`
+
+**Filtering:** No server-side filtering is implemented on any current endpoint. All filtering must be done client-side or via separate fetch with known IDs.
+
+**Sort field examples:**
+- `sort=createdAt,desc` — most recent first (most common)
+- `sort=rollNumber,asc` — alphabetical by roll number
+
+---
+
+### HTTP Status Code Handling Guide
+
+| Status | When it occurs | Frontend action |
+|---|---|---|
+| 200 | Success (GET, PUT, POST action) | Use response data |
+| 201 | Resource created (POST) | Use response data, navigate or show success |
+| 202 | Accepted (stub endpoints) | Show generic success message |
+| 204 | Success, no body (DELETE, logout) | Clear relevant UI state |
+| 400 | Validation failure | Parse `errors[]`, display per-field |
+| 401 | Token expired or invalid | Attempt silent refresh; if refresh fails, redirect to /login |
+| 403 | Wrong role or ownership violation | Show 403 page or toast: "You don't have permission" |
+| 404 | Resource not found | Show 404 or inline "Not found" |
+| 409 | Conflict (duplicate, wrong state) | Show `detail` field as toast/banner |
+| 413 | File too large | Show "File must be under 10MB" |
+| 422 | Invalid state transition | Show `detail` field |
+| 423 | Account locked | Show "Account locked. Try again in 15 minutes" |
+| 429 | Rate limited | Show "Too many requests. Please wait." |
+| 500 | Server error | Show generic error with retry |

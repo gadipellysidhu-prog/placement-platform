@@ -397,7 +397,176 @@ Per FRONTEND_CONSTITUTION.md Section 13 (WCAG 2.1 Level AA):
 
 ---
 
-## 8. Feature Flags / Blocked Features
+## 8. UI Patterns
+
+### 8.1 Form Patterns
+
+**Standard form structure:**
+```
+<PageHeader title="Create Job Posting" />
+<Card>
+  <CardContent>
+    <Form onSubmit={handleSubmit}>
+      <FormField name="title" label="Job Title" required />
+      <FormField name="ctcMin" label="CTC Min (LPA)" type="number" />
+      <div className="flex justify-end gap-3 pt-4">
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" loading={isSubmitting}>Save</Button>
+      </div>
+    </Form>
+  </CardContent>
+</Card>
+```
+
+**Validation rules:**
+- Validate with Zod schema on submit and on blur
+- Show field-level errors below the input (`text-red-600 text-sm`)
+- Show server-side `errors[]` array mapped to fields after submission
+- Show non-field server errors as a toast or inline `<Alert variant="destructive">`
+- Disable submit button while `isSubmitting === true`
+- Never clear the form on server error — preserve user input
+
+**Required field indicator:** asterisk (`*`) in label, not in placeholder.
+
+---
+
+### 8.2 Table Patterns
+
+**Standard paginated table:**
+- Column headers: `font-medium text-gray-600 text-sm`
+- Row hover: `hover:bg-gray-50 transition-colors`
+- Status column: always use `<StatusBadge>` — never raw text
+- Actions column: icon buttons (`ghost` variant) with tooltips
+- Sort: clicking a sortable column header toggles asc/desc; use `aria-sort`
+- Pagination: `<Pagination>` component below table; show "Showing X–Y of Z results"
+- Empty state: replace table body with `<EmptyState>` — not an empty `<tbody>`
+
+**Mobile behavior:** Tables wrap in a horizontal scroll container at < 768px. Pin the first column (name/roll number) when scrolling.
+
+---
+
+### 8.3 Loading States
+
+Use skeleton screens (not spinners) for initial page data loads:
+
+```tsx
+// Page-level: show skeleton while first fetch is loading
+if (isLoading) return <StudentTableSkeleton />;
+
+// Inline: show spinner in button while mutation is pending
+<Button loading={mutation.isPending}>Save</Button>
+```
+
+- Skeleton rows should match the approximate height of real rows
+- `aria-busy="true"` on the loading container
+- Never show both skeleton and real content simultaneously
+
+---
+
+### 8.4 Error States
+
+| Scenario | Component | Action |
+|---|---|---|
+| Network error / 500 | `<ErrorState message="..." onRetry={refetch} />` | Retry button |
+| 404 not found (page) | Redirect to `/404` | — |
+| 404 resource (inline) | `<Alert>Resource not found</Alert>` | Back button |
+| 403 forbidden (page) | Redirect to `/403` | — |
+| 403 action (inline) | Toast: "You don't have permission" | — |
+| Validation (form) | Per-field error below input | — |
+| Conflict 409 | Toast with `detail` message | — |
+| Rate limit 429 | Toast: "Too many requests. Try again shortly." | — |
+
+---
+
+### 8.5 Empty States
+
+Every list page must handle the empty state explicitly:
+
+```tsx
+if (data.totalElements === 0) {
+  return (
+    <EmptyState
+      icon={<FileText />}
+      title="No applications yet"
+      description="Students who apply to job postings will appear here."
+      action={<Button>Create Job Posting</Button>}  // optional
+    />
+  );
+}
+```
+
+- Use a relevant Lucide icon
+- Provide a contextual description (not just "No data")
+- Offer an action when one is available (e.g., "Create" or "Invite")
+
+---
+
+### 8.6 Dialog and Confirmation Patterns
+
+**Destructive actions** (delete, blacklist, reject, expire) — always require confirmation:
+
+```tsx
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="destructive">Blacklist Company</Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Blacklist Acme Corp?</AlertDialogTitle>
+      <AlertDialogDescription>
+        This action cannot be undone. Students will no longer see this company's postings.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction onClick={handleBlacklist}>Confirm Blacklist</AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+- `AlertDialog` for irreversible actions
+- `Dialog` for inline forms (create offer, update status)
+- Focus traps on both — handled by Radix UI
+- Escape key closes; clicking overlay closes (except during submission)
+
+---
+
+### 8.7 Design Tokens (Tailwind config)
+
+```ts
+// tailwind.config.ts
+theme: {
+  extend: {
+    colors: {
+      primary: { DEFAULT: '#4F46E5', ... },   // Indigo-600
+      success: { DEFAULT: '#059669', ... },   // Emerald-600
+      warning: { DEFAULT: '#F59E0B', ... },   // Amber-500
+      danger:  { DEFAULT: '#DC2626', ... },   // Red-600
+      info:    { DEFAULT: '#0284C7', ... },   // Sky-600
+    },
+    fontFamily: {
+      sans: ['Inter', 'system-ui', 'sans-serif'],
+      mono: ['JetBrains Mono', 'monospace'],
+    },
+  },
+}
+```
+
+**Typography hierarchy:**
+| Usage | Class |
+|---|---|
+| Page title | `text-2xl font-semibold text-gray-900` |
+| Section heading | `text-lg font-semibold text-gray-900` |
+| Card title | `text-base font-medium text-gray-900` |
+| Body text | `text-sm text-gray-700` |
+| Secondary text | `text-sm text-gray-500` |
+| Monospace (UUIDs, keys) | `font-mono text-xs text-gray-600` |
+| Error text | `text-sm text-red-600` |
+
+---
+
+## 9. Feature Flags / Blocked Features
 
 The following planned frontend features are **blocked** by missing backend endpoints:
 

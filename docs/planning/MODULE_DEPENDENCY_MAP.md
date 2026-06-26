@@ -116,6 +116,91 @@ job_applications (1) ───────────────────�
 
 ---
 
+## 1.5 Security Filter Chain and Request Lifecycle
+
+### Security Filter Chain (ordered)
+
+```
+HTTP Request
+    │
+    ▼
+RateLimitFilter (Bucket4j — per-IP token bucket)
+    │ 429 Too Many Requests if limit exceeded
+    ▼
+JwtAuthenticationFilter (OncePerRequestFilter)
+    │
+    ├── Is path public? (/auth/**, /actuator/health, /swagger-ui/**, /v3/api-docs/**)
+    │       └── YES → pass through to dispatcher
+    │
+    ├── Extract "Authorization: Bearer <token>" header
+    │       └── Missing/malformed → clear SecurityContext, pass through (results in 401 at method security)
+    │
+    ├── JwtService.validateToken(token)
+    │       └── Invalid/expired → clear SecurityContext, pass through
+    │
+    ├── CustomUserDetailsService.loadUserByUsername(email)
+    │
+    └── Set UsernamePasswordAuthenticationToken in SecurityContext
+    │
+    ▼
+Spring MVC DispatcherServlet
+    │
+    ▼
+@PreAuthorize evaluated (method-level security with role hierarchy)
+    │
+    ├── ROLE_ADMIN > ROLE_PLACEMENT_OFFICER > ROLE_STUDENT
+    │   (hasRole('STUDENT') passes for OFFICER and ADMIN too)
+    │
+    └── Ownership checks (@PreAuthorize with SpEL) evaluated inline in service
+    │
+    ▼
+Controller → Service → Repository → PostgreSQL
+```
+
+### Rate Limit Configuration
+
+| Endpoint group | Limit |
+|---|---|
+| `POST /auth/register` | 3 requests / IP / window |
+| `POST /auth/login` | 5 requests / IP / window |
+| `POST /auth/refresh` | 20 requests / IP / window |
+| All other endpoints | Not rate limited (Bucket4j config targets auth paths only) |
+
+### JWT Token Lifecycle
+
+```
+Client                              Backend
+  │                                    │
+  │── POST /auth/login ──────────────► │
+  │◄── { accessToken, refreshToken } ──│
+  │                                    │
+  │   [accessToken: 15min, in memory]  │
+  │   [refreshToken: 7 days, stored]   │
+  │                                    │
+  │── API call (Bearer accessToken) ──►│
+  │                                    │── 401 if expired
+  │                                    │
+  │── POST /auth/refresh ─────────────►│  (single-use rotation)
+  │◄── { new accessToken, new refresh} │
+  │                                    │
+  │── retry original request ─────────►│
+```
+
+### Application Startup Order
+
+```
+1. Flyway migrations run (DDL validate, apply pending migrations)
+2. JPA EntityManagerFactory initializes (schema validate)
+3. RsaKeyProperties loads (JWT_PRIVATE_KEY_PEM / JWT_PUBLIC_KEY_PEM env vars OR ephemeral pair)
+4. SecurityConfig registers filter chain
+5. Spring Boot application context ready
+6. Embedded Tomcat starts on port 8081 (dev) or 8080 (container)
+```
+
+> **Frontend startup note:** The frontend should call `GET /actuator/health/readiness` before making authenticated API calls to confirm the backend is ready. This is especially relevant in docker-compose development.
+
+---
+
 ## 2. Frontend Module Dependency Map
 
 ### 2.1 Layer Architecture (Dependency Direction)

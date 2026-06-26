@@ -1,11 +1,24 @@
 # API_CONTRACT.md
-## Complete REST API Reference — Placement Intelligence & Skill Verification Platform
+## REST API Reference — Placement Intelligence & Skill Verification Platform
 
-**Source:** Verified from backend controller, DTO, and service source code.
+**Source:** Verified from backend controller, DTO, and service source code. | **Refined:** 2026-06-27
 **Base URL (dev):** `http://localhost:8081`
 **Base URL (prod):** `https://api.placement.example.com`
 **Content-Type:** `application/json` for all requests and responses.
 **Auth header:** `Authorization: Bearer <access_token>` (required for all authenticated endpoints).
+
+---
+
+## Endpoint Status Legend
+
+| Symbol | Meaning |
+|---|---|
+| ✅ IMPLEMENTED | Endpoint exists and is functional |
+| ⚠️ STUB | Endpoint exists but has no real implementation |
+| ❌ MISSING | No controller — service exists but is unreachable |
+
+All endpoints in Modules 1–9 below are **✅ IMPLEMENTED** unless marked otherwise.  
+All endpoints in the **Missing Endpoints** section at the bottom are **❌ MISSING**.
 
 ---
 
@@ -97,7 +110,9 @@ Register a new user account.
 |---|---|---|---|
 | email | string | Valid email format | Yes |
 | password | string | 8–128 characters | Yes |
-| role | enum | ROLE_ADMIN, ROLE_PLACEMENT_OFFICER, ROLE_STUDENT | Yes |
+| role | enum | **ROLE_STUDENT only** — submitting ROLE_ADMIN or ROLE_PLACEMENT_OFFICER returns 400 | Yes |
+
+> **Security note (fixed in Phase 0.75):** Public registration is restricted to `ROLE_STUDENT`. Privileged users must be created via direct DB provisioning. Submitting a privileged role returns `400 Bad Request`.
 
 **Response: 201 Created**
 ```json
@@ -110,6 +125,7 @@ Register a new user account.
 ```
 
 **Errors:**
+- `400 Bad Request` — Privileged role submitted (`ROLE_ADMIN`, `ROLE_PLACEMENT_OFFICER`)
 - `409 Conflict` — Email already registered
 
 ---
@@ -200,7 +216,7 @@ Invalidate the refresh token.
 
 ---
 
-### POST /auth/verify-email
+### ⚠️ POST /auth/verify-email
 
 Initiate email verification flow.
 
@@ -209,11 +225,11 @@ Initiate email verification flow.
 
 **Response: 202 Accepted**
 
-*Note: Implementation stub — no actual email is sent in current code.*
+> **STUB:** The endpoint responds 202 but no email is sent. Frontend should display "If registered, you will receive a verification email" without relying on any backend confirmation.
 
 ---
 
-### POST /auth/forgot-password
+### ⚠️ POST /auth/forgot-password
 
 Initiate password reset flow.
 
@@ -222,7 +238,7 @@ Initiate password reset flow.
 
 **Response: 202 Accepted**
 
-*Note: Implementation stub — no actual email is sent in current code.*
+> **STUB:** The endpoint responds 202 but no email is sent. Frontend must show a generic "If this email is registered, a reset link will be sent" message. The full reset flow cannot be built until the backend implements email dispatch.
 
 ---
 
@@ -232,7 +248,7 @@ Initiate password reset flow.
 
 ### GET /api/users/me
 
-Get the authenticated user's profile.
+Get the authenticated user's profile. Used for session rehydration on page load.
 
 **Auth:** Required (any role)
 
@@ -247,7 +263,9 @@ Get the authenticated user's profile.
 | Field | Type | Description |
 |---|---|---|
 | email | string | User email (principal name) |
-| role | string | First granted authority |
+| role | string | First granted authority (`ROLE_STUDENT`, `ROLE_PLACEMENT_OFFICER`, `ROLE_ADMIN`) |
+
+> **Frontend Note:** This endpoint does NOT return the user UUID. When correlating with `StudentResponse.userId`, the frontend must first call `GET /api/students/me` to retrieve the student record. See HIGH-6 in BACKEND_COMPATIBILITY.md.
 
 ---
 
@@ -633,10 +651,10 @@ Create a job posting (starts in DRAFT status).
 
 ### GET /api/job-postings
 
-List open job postings (paginated).
+List job postings (paginated).
 
 **Auth:** Required — `ROLE_STUDENT`  
-**Note:** Returns only OPEN status postings.
+**Scope:** Returns **only OPEN** postings. Officers cannot use this endpoint to list DRAFT or CLOSED postings — that endpoint is missing. See ❌ MISSING section and HIGH-4 in BACKEND_COMPATIBILITY.md.
 
 **Response: 200 OK** — `Page<JobPostingResponse>`
 
@@ -778,6 +796,8 @@ Get the authenticated student's own applications.
 
 **Response: 200 OK** — `List<JobApplicationResponse>`
 
+> **Pagination gap:** Returns an unbounded list (no `page`/`size` params). See HIGH-2 in BACKEND_COMPATIBILITY.md.
+
 ---
 
 ### GET /api/applications/{id}
@@ -819,6 +839,15 @@ Update application status.
 | Field | Type | Values | Required |
 |---|---|---|---|
 | status | enum | APPLIED, SHORTLISTED, INTERVIEWED, OFFERED, REJECTED | Yes |
+
+**Valid status transitions (officer-driven):**
+- APPLIED → SHORTLISTED, REJECTED
+- SHORTLISTED → INTERVIEWED, REJECTED
+- INTERVIEWED → OFFERED, REJECTED
+- OFFERED → (offer entity created via `POST /api/offers`)
+- REJECTED → (terminal)
+
+**Student-driven transitions:** APPLIED or SHORTLISTED → WITHDRAWN (via `POST /api/applications/{id}/withdraw`)
 
 **Response: 200 OK** — `JobApplicationResponse`
 
@@ -908,6 +937,8 @@ Get the authenticated student's own offers.
 **Auth:** Required — `ROLE_STUDENT`
 
 **Response: 200 OK** — `List<OfferResponse>`
+
+> **Pagination gap:** Returns an unbounded list. See HIGH-2 in BACKEND_COMPATIBILITY.md.
 
 ---
 
@@ -1039,6 +1070,8 @@ Get the authenticated student's own certificates.
 **Auth:** Required — `ROLE_STUDENT`
 
 **Response: 200 OK** — `List<CertificateResponse>`
+
+> **Pagination gap:** Returns an unbounded list. See HIGH-2 in BACKEND_COMPATIBILITY.md.
 
 ---
 
@@ -1237,15 +1270,102 @@ The backend exposes OpenAPI 3 documentation:
 
 ---
 
-## Missing / Not Implemented Endpoints
+---
 
-The following services have full implementations but **no REST controllers**:
+## ✅ Endpoints Added in Phase 0.75
 
-| Resource | Service | Missing Endpoints |
-|---|---|---|
-| Branches | BranchService | GET /api/branches, GET /api/branches/{id}, POST /api/branches, PUT /api/branches/{id}, POST /api/branches/{id}/activate, POST /api/branches/{id}/deactivate |
-| Skills | SkillService | GET /api/skills, GET /api/skills/{id}, GET /api/skills?category=X, POST /api/skills, POST /api/skills/{id}/verify |
-| Recruiters | RecruiterService | No controller |
-| Notifications | NotificationService | No REST API (internal only) |
-| AI Governance | AIGovernanceService | No REST API |
-| Analytics | None | Not implemented |
+These were previously missing and are now **fully implemented** with integration tests passing.
+
+### ✅ Branch API (`/api/branches`) — IMPLEMENTED
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | /api/branches | STUDENT | List all active branches |
+| GET | /api/branches/{id} | STUDENT | Get branch by ID |
+| POST | /api/branches | PLACEMENT_OFFICER | Create branch |
+| PUT | /api/branches/{id} | PLACEMENT_OFFICER | Update branch |
+| POST | /api/branches/{id}/activate | PLACEMENT_OFFICER | Activate branch |
+| POST | /api/branches/{id}/deactivate | PLACEMENT_OFFICER | Deactivate branch |
+
+**Response shape:**
+```json
+{ "id": "UUID", "name": "string", "code": "string|null", "description": "string|null", "active": true, "createdAt": "ISO-8601", "updatedAt": "ISO-8601" }
+```
+
+**Errors:** `409 Conflict` — duplicate name or code.
+
+---
+
+### ✅ Skill API (`/api/skills`) — IMPLEMENTED
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | /api/skills | STUDENT | List all skills |
+| GET | /api/skills?category=X | STUDENT | Filter by category |
+| GET | /api/skills?verified=true | STUDENT | Filter verified only |
+| GET | /api/skills/{id} | STUDENT | Get skill by ID |
+| POST | /api/skills | PLACEMENT_OFFICER | Create skill |
+| PUT | /api/skills/{id} | PLACEMENT_OFFICER | Update skill name/category |
+| POST | /api/skills/{id}/verify | PLACEMENT_OFFICER | Verify skill |
+
+**Response shape:**
+```json
+{ "id": "UUID", "name": "string", "category": "string|null", "verified": true, "createdAt": "ISO-8601", "updatedAt": "ISO-8601" }
+```
+
+**Errors:** `409 Conflict` — duplicate name.
+
+---
+
+### ✅ Dashboard Summary (`/api/dashboard/summary`) — IMPLEMENTED
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | /api/dashboard/summary | PLACEMENT_OFFICER | Aggregate placement statistics |
+
+**Response shape:**
+```json
+{
+  "totalStudents": 0,
+  "placedStudents": 0,
+  "activeCompanies": 0,
+  "openJobPostings": 0,
+  "pendingApplications": 0,
+  "pendingCertificates": 0,
+  "placementRatePercent": 0.0
+}
+```
+
+---
+
+## ❌ Missing Endpoints (No REST Controller)
+
+These services have full backend implementations but no HTTP controller. The frontend **cannot call these endpoints** — they do not exist yet.
+
+### Missing: Officer Job Postings Endpoint
+
+**Blocking:** Officers cannot see DRAFT/CLOSED/CANCELLED postings. `GET /api/job-postings` returns OPEN only.
+
+**Recommended:**
+```
+GET /api/job-postings/all?status=DRAFT    (PLACEMENT_OFFICER)
+```
+or add role-aware `?status` filter to the existing endpoint.
+
+---
+
+### Missing: Recruiter API (`/api/recruiters`)
+
+No controller. `Recruiter` entity and `RecruiterService` exist. Needed to associate users to companies as recruiters.
+
+---
+
+### Missing: Notification API (`/api/notifications`)
+
+`NotificationService` exists; internal only via outbox. No in-app notification REST endpoint.
+
+---
+
+### Missing: Audit Log API (`/api/audit`)
+
+`AuditLog` entity and repository exist (populated via domain event handler). No REST endpoint.
