@@ -43,7 +43,7 @@ public class DashboardController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('PLACEMENT_OFFICER','ROLE_ADMIN')")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
     @Operation(summary = "Get placement dashboard summary statistics")
     public ResponseEntity<DashboardSummaryResponse> summary() {
         long totalStudents = studentRepository.count();
