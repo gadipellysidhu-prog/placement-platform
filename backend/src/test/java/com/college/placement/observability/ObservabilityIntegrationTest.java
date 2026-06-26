@@ -1,6 +1,8 @@
 package com.college.placement.observability;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
+import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
@@ -13,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -37,6 +40,7 @@ class ObservabilityIntegrationTest {
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired PasswordEncoder passwordEncoder;
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 
@@ -113,11 +117,17 @@ class ObservabilityIntegrationTest {
     }
 
     private String registerAdmin() throws Exception {
-        MvcResult result = mockMvc.perform(post("/auth/register")
+        AppUser admin = new AppUser();
+        admin.setEmail("admin@obs.test");
+        admin.setPasswordHash(passwordEncoder.encode("password123"));
+        admin.setRole(Role.ROLE_ADMIN);
+        userRepository.save(admin);
+
+        MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(JSON)
                         .content(objectMapper.writeValueAsString(
-                            new RegisterRequest("admin@obs.test", "password123", Role.ROLE_ADMIN))))
-                .andExpect(status().isCreated())
+                            new LoginRequest("admin@obs.test", "password123"))))
+                .andExpect(status().isOk())
                 .andReturn();
         TokenResponse tokens = objectMapper.readValue(
             result.getResponse().getContentAsString(), TokenResponse.class);

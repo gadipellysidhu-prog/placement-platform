@@ -23,4 +23,6 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
     List<JobPosting> findByCompany(Company company);
 
     List<JobPosting> findByCompanyAndStatus(Company company, JobPostingStatus status);
+
+    long countByStatus(JobPostingStatus status);
 }

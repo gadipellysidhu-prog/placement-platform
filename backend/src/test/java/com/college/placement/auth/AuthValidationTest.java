@@ -84,7 +84,7 @@ class AuthValidationTest {
 
         mvc.perform(post("/auth/register")
                         .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest("dup@test.com", "password456", Role.ROLE_ADMIN))))
+                        .content(mapper.writeValueAsString(new RegisterRequest("dup@test.com", "password456", Role.ROLE_STUDENT))))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
     }

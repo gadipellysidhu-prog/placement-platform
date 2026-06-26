@@ -38,4 +38,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     List<Student> findByBranch(Branch branch);
 
     List<Student> findByStatus(StudentStatus status);
+
+    long countByStatus(StudentStatus status);
 }
