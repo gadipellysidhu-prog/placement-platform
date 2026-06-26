@@ -298,11 +298,9 @@ jobs:
   runs-on: ubuntu-latest
   needs: docker-build
   timeout-minutes: 20
-
   permissions:
     contents: read
     security-events: write
-
   steps:
     - uses: actions/checkout@v4
 
@@ -310,35 +308,49 @@ jobs:
       working-directory: backend
       run: docker build -t placement-platform:scan .
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.33.1
-      with:
-        image-ref: placement-platform:scan
-        format: sarif
-        output: trivy-results.sarif
-        severity: CRITICAL,HIGH
-        ignore-unfixed: true
-        ignorefile: backend/.trivyignore
-        exit-code: "1"
+    - name: Install Trivy
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y wget apt-transport-https gnupg
+        for i in {1..3}; do
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null && break || sleep 5
+        done
+        echo "deb signed-by=/usr/share/keyrings/trivy.gpg https://aquasecurity.github.io/trivy-repo/deb generic main" \
+          | sudo tee /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update -q
+        sudo apt-get install -y trivy
+        trivy --version
 
-    - name: Upload Trivy SARIF
-      if: always()
+    - name: Trivy — scan image for CRITICAL/HIGH CVEs SARIF
+      run: |
+        trivy image \
+          --format sarif \
+          --output trivy-results.sarif \
+          --severity CRITICAL,HIGH \
+          --exit-code 1 \
+          --ignore-unfixed \
+          --ignorefile backend/.trivyignore \
+          placement-platform:scan
+
+    - name: Upload Trivy SARIF to GitHub Security tab
+      if: always
       uses: github/codeql-action/upload-sarif@v3
       with:
-        sarif_file: trivy-results.sarif
-        category: trivy-container
+        sarif_file: 'trivy-results.sarif'
+        category: 'trivy-container'
 
-    - name: Trivy table summary
-      if: always()
-      uses: aquasecurity/trivy-action@0.33.1
-      with:
-        image-ref: placement-platform:scan
-        format: table
-        severity: CRITICAL,HIGH,MEDIUM
-        ignore-unfixed: true
-        ignorefile: backend/.trivyignore
-        exit-code: "0"																																		 
-	   
+    - name: Trivy — table summary informational
+      if: always
+      run: |
+        trivy image \
+          --format table \
+          --severity CRITICAL,HIGH,MEDIUM \
+          --ignore-unfixed \
+          --ignorefile backend/.trivyignore \
+          --exit-code 0 \
+          placement-platform:scan
   # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
   deployment-readiness:
     name: "Stage 8 · Deployment Readiness"
