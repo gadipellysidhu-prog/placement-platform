@@ -293,15 +293,11 @@ jobs:
           docker stop "$CID" || true
           exit 1
    # ── Stage 7b: Container Security Scan (Trivy) ────────────────────────────
- 																																		 
-container-scan:
+ container-scan:
   name: "Stage 7b · Container Scan"
   runs-on: ubuntu-latest
   needs: docker-build
   timeout-minutes: 20
-				
-					
-							
 
   permissions:
     contents: read
@@ -309,14 +305,13 @@ container-scan:
 
   steps:
     - uses: actions/checkout@v4
-													  
 
     - name: Build image for scanning
       working-directory: backend
       run: docker build -t placement-platform:scan .
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@0.33.1
       with:
         image-ref: placement-platform:scan
         format: sarif
@@ -332,28 +327,18 @@ container-scan:
       with:
         sarif_file: trivy-results.sarif
         category: trivy-container
-						   
-							  
-											   
-								   
 
     - name: Trivy table summary
       if: always()
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@0.33.1
       with:
         image-ref: placement-platform:scan
         format: table
-
-													 
-					
-			  
-					   
-							
         severity: CRITICAL,HIGH,MEDIUM
         ignore-unfixed: true
         ignorefile: backend/.trivyignore
-        exit-code: "0"
-								   
+        exit-code: "0"																																		 
+	   
   # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
   deployment-readiness:
     name: "Stage 8 · Deployment Readiness"
