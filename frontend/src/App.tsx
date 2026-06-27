@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { NotificationProvider } from '@/providers/NotificationProvider'
+import { SessionProvider } from '@/features/auth/SessionProvider'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { PublicRoute } from '@/routes/PublicRoute'
 import { AuthLayout } from '@/layouts/AuthLayout'
@@ -17,10 +18,10 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const ForbiddenPage = lazy(() => import('@/pages/ForbiddenPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 
-// Auth feature pages — implemented in Phase 2 auth:
-// const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
-// const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
-// const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+// Auth feature pages
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
+const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
 
 function AppRoutes(): React.ReactElement {
   return (
@@ -32,30 +33,9 @@ function AppRoutes(): React.ReactElement {
         {/* Public routes — redirect authenticated users away */}
         <Route element={<PublicRoute />}>
           <Route element={<AuthLayout />}>
-            <Route
-              path={ROUTES.LOGIN}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Login — Phase 2 Auth
-                </div>
-              }
-            />
-            <Route
-              path={ROUTES.REGISTER}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Register — Phase 2 Auth
-                </div>
-              }
-            />
-            <Route
-              path={ROUTES.FORGOT_PASSWORD}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Forgot Password — Phase 2 Auth
-                </div>
-              }
-            />
+            <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+            <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
           </Route>
         </Route>
 
@@ -83,7 +63,9 @@ export default function App(): React.ReactElement {
           <TooltipProvider>
             <NotificationProvider />
             <BrowserRouter>
-              <AppRoutes />
+              <SessionProvider>
+                <AppRoutes />
+              </SessionProvider>
             </BrowserRouter>
           </TooltipProvider>
         </ThemeProvider>

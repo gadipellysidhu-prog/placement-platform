@@ -42,7 +42,9 @@ public class CorsConfig {
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/auth/**", config);
+source.registerCorsConfiguration("/api/**", config);
+source.registerCorsConfiguration("/actuator/**", config);
         return source;
     }
 }
