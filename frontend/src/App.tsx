@@ -13,7 +13,7 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { ROUTES } from '@/constants/routes'
 import LoadingPage from '@/pages/LoadingPage'
 
-// Lazy-loaded pages — each route in its own chunk
+// Lazy-loaded pages
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const ForbiddenPage = lazy(() => import('@/pages/ForbiddenPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
@@ -22,6 +22,16 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+
+// Student feature pages
+const StudentProfilePage = lazy(() => import('@/features/students/pages/StudentProfilePage'))
+const StudentsListPage = lazy(() => import('@/features/students/pages/StudentsListPage'))
+const StudentDetailPage = lazy(() => import('@/features/students/pages/StudentDetailPage'))
+
+// Company feature pages
+const CompaniesListPage = lazy(() => import('@/features/companies/pages/CompaniesListPage'))
+const CompanyDetailPage = lazy(() => import('@/features/companies/pages/CompanyDetailPage'))
+const CreateCompanyPage = lazy(() => import('@/features/companies/pages/CreateCompanyPage'))
 
 function AppRoutes(): React.ReactElement {
   return (
@@ -42,7 +52,20 @@ function AppRoutes(): React.ReactElement {
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
+            {/* Main dashboard */}
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
+
+            {/* Student routes */}
+            <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfilePage />} />
+
+            {/* Officer/Admin routes — Students */}
+            <Route path={ROUTES.OFFICER.STUDENTS} element={<StudentsListPage />} />
+            <Route path={`${ROUTES.OFFICER.STUDENTS}/:id`} element={<StudentDetailPage />} />
+
+            {/* Companies — all authenticated roles */}
+            <Route path={ROUTES.OFFICER.COMPANIES} element={<CompaniesListPage />} />
+            <Route path={ROUTES.OFFICER.CREATE_COMPANY} element={<CreateCompanyPage />} />
+            <Route path={`${ROUTES.OFFICER.COMPANIES}/:id`} element={<CompanyDetailPage />} />
           </Route>
         </Route>
 

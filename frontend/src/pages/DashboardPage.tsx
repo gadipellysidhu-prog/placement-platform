@@ -1,32 +1,23 @@
+import { lazy, Suspense } from 'react'
 import { useAuthStore } from '@/stores/auth.store'
-import { ROLE_LABELS } from '@/constants/roles'
+import { ROLES } from '@/constants/roles'
+import { Spinner } from '@/shared/ui/spinner'
 
-/**
- * Placeholder dashboard page.
- * Will be replaced with role-specific dashboards in Phase 2.
- */
+const StudentDashboardPage = lazy(() => import('@/features/dashboard/pages/StudentDashboardPage'))
+const OfficerDashboardPage = lazy(() => import('@/features/dashboard/pages/OfficerDashboardPage'))
+
 export default function DashboardPage() {
-  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.user?.role)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome back{user ? `, ${user.email}` : ''}.
-          {user && (
-            <span className="ml-1">
-              Logged in as <strong>{ROLE_LABELS[user.role]}</strong>.
-            </span>
-          )}
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-dashed border-border p-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Phase 1 foundation is running correctly. Dashboard content arrives in Phase 2.
-        </p>
-      </div>
-    </div>
+    <Suspense
+      fallback={
+        <div className="flex h-48 items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
+      {role === ROLES.STUDENT ? <StudentDashboardPage /> : <OfficerDashboardPage />}
+    </Suspense>
   )
 }
