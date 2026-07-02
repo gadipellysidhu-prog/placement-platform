@@ -151,14 +151,6 @@ public class AuthService {
         });
     }
 
-    public void initiateEmailVerification(String email) {
-        // Placeholder: Phase 6 outbox will dispatch verification email.
-    }
-
-    public void initiateForgotPassword(String email) {
-        // Placeholder: Phase 6 outbox will dispatch password reset email.
-    }
-
     // ── Brute-force protection ────────────────────────────────────────────────
 
     private void checkBruteForceLock(AppUser user) {

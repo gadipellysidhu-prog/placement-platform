@@ -59,6 +59,22 @@ notification:
     enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
     from: ${NOTIFICATION_EMAIL_FROM:no-reply@placement.local}
 
+# Verification-token subsystem (email verification, password reset, invitations).
+# All lifetimes/links are configurable; raw tokens are never persisted.
+auth:
+  verification:
+    token-bytes: ${VERIFICATION_TOKEN_BYTES:32}
+    email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT24H}
+    password-reset-ttl: ${PASSWORD_RESET_TTL:PT1H}
+    invitation-ttl: ${INVITATION_TTL:PT72H}
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    email-verification-path: ${EMAIL_VERIFICATION_PATH:/verify-email}
+    password-reset-path: ${PASSWORD_RESET_PATH:/reset-password}
+    issuer: ${VERIFICATION_ISSUER:Placement Platform}
+    cleanup:
+      enabled: ${VERIFICATION_CLEANUP_ENABLED:true}
+      interval-ms: ${VERIFICATION_CLEANUP_INTERVAL_MS:3600000}
+
 server:
   port: ${SERVER_PORT:8081}
   shutdown: graceful
