@@ -63,15 +63,33 @@ class AuthIntegrationTest {
     // ── Register ──────────────────────────────────────────────────────────────
 
     @Test
-    void register_validStudent_returns201WithTokens() throws Exception {
+    void register_validStudent_returns201AndCreatesUnverifiedAccountWithoutTokens() throws Exception {
+        // Phase C: registration issues no JWT; the account starts unverified.
         mvc.perform(post("/auth/register")
                         .contentType(JSON)
                         .content(toJson(new RegisterRequest(STUDENT_EMAIL, TEST_PASSWORD, Role.ROLE_STUDENT))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.accessTokenExpiresIn").isNumber());
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
+
+        AppUser created = userRepository.findByEmail(STUDENT_EMAIL).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(created.isEmailVerified()).isFalse();
+    }
+
+    @Test
+    void login_unverifiedAccount_returns403ProblemDetail() throws Exception {
+        // Register creates an unverified account (helper is not used here on purpose).
+        mvc.perform(post("/auth/register")
+                        .contentType(JSON)
+                        .content(toJson(new RegisterRequest(STUDENT_EMAIL, TEST_PASSWORD, Role.ROLE_STUDENT))))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/auth/login")
+                        .contentType(JSON)
+                        .content(toJson(new LoginRequest(STUDENT_EMAIL, TEST_PASSWORD))))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
     }
 
     @Test
@@ -426,13 +444,10 @@ class AuthIntegrationTest {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    // Creates a verified account and returns tokens via login. Verification enforcement
+    // (Phase C) means unverified accounts cannot log in, so test fixtures create verified users.
     private TokenResponse register(String email, Role role) throws Exception {
-        MvcResult result = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(toJson(new RegisterRequest(email, TEST_PASSWORD, role))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return fromJson(result, TokenResponse.class);
+        return createPrivilegedUser(email, role);
     }
 
     private TokenResponse createPrivilegedUser(String email, Role role) throws Exception {
@@ -440,6 +455,7 @@ class AuthIntegrationTest {
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
         user.setRole(role);
+        user.setEmailVerified(true);
         userRepository.save(user);
         return login(email);
     }

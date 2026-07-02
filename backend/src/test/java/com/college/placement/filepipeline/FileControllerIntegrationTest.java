@@ -225,18 +225,12 @@ class FileControllerIntegrationTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String getToken(String email, Role role) throws Exception {
-        if (role == Role.ROLE_STUDENT) {
-            mvc.perform(post("/auth/register")
-                            .contentType(JSON)
-                            .content(mapper.writeValueAsString(new RegisterRequest(email, PASSWORD, role))))
-                    .andExpect(status().isCreated());
-        } else {
-            AppUser user = new AppUser();
-            user.setEmail(email);
-            user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-            user.setRole(role);
-            userRepository.save(user);
-        }
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        user.setRole(role);
+        user.setEmailVerified(true);
+        userRepository.save(user);
 
         MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)

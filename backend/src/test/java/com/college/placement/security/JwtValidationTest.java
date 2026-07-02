@@ -1,6 +1,8 @@
 package com.college.placement.security;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
+import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
@@ -193,10 +195,17 @@ class JwtValidationTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private TokenResponse register() throws Exception {
-        MvcResult r = mvc.perform(post("/auth/register")
+        mvc.perform(post("/auth/register")
                         .contentType(JSON)
                         .content(mapper.writeValueAsString(new RegisterRequest(EMAIL, PASSWORD, Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated()).andReturn();
+                .andExpect(status().isCreated());
+        AppUser user = userRepo.findByEmail(EMAIL).orElseThrow();
+        user.setEmailVerified(true);
+        userRepo.save(user);
+        MvcResult r = mvc.perform(post("/auth/login")
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new LoginRequest(EMAIL, PASSWORD))))
+                .andExpect(status().isOk()).andReturn();
         return mapper.readValue(r.getResponse().getContentAsString(), TokenResponse.class);
     }
 

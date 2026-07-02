@@ -42,9 +42,9 @@ public class VerificationToken extends Auditable {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    /** Owning user. Eagerly loaded — the recipient is always needed when a token is used. */
+    /** Owning user. Loaded lazily; {@code VerificationTokenService.consume} initialises it within its transaction. */
     @NotNull
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private AppUser user;

@@ -24,4 +24,9 @@ public class AuthException extends ResponseStatusException {
     public static AuthException accountLocked() {
         return new AuthException(HttpStatus.LOCKED, "Account is temporarily locked due to too many failed login attempts.");
     }
+
+    public static AuthException emailNotVerified() {
+        return new AuthException(HttpStatus.FORBIDDEN,
+                "Email address is not verified. Please verify your email before signing in.");
+    }
 }
