@@ -1,2 +1,6 @@
 #!/bin/sh
-cd frontend && npx lint-staged
+# Only lint the frontend when it is present in the working tree; the project is
+# backend-only in this checkout, so skip gracefully when frontend/ is absent.
+if [ -d frontend ]; then
+  cd frontend && npx lint-staged
+fi

@@ -24,6 +24,8 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     private static final String HEADER_TRACE_ID   = "X-Trace-ID";
     private static final String MDC_TRACE_ID       = "traceId";
     private static final String MDC_REQUEST_ID     = "requestId";
+    private static final String MDC_CLIENT_IP      = "clientIp";
+    private static final String MDC_USER_AGENT     = "userAgent";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -36,6 +38,11 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
         MDC.put(MDC_TRACE_ID, traceId);
         MDC.put(MDC_REQUEST_ID, requestId);
+        MDC.put(MDC_CLIENT_IP, resolveClientIp(request));
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null && !userAgent.isBlank()) {
+            MDC.put(MDC_USER_AGENT, userAgent.length() > 512 ? userAgent.substring(0, 512) : userAgent);
+        }
 
         response.setHeader(HEADER_TRACE_ID, traceId);
         response.setHeader(HEADER_REQUEST_ID, requestId);
@@ -52,6 +59,17 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
                     response.getStatus(), durationMs);
             MDC.remove(MDC_TRACE_ID);
             MDC.remove(MDC_REQUEST_ID);
+            MDC.remove(MDC_CLIENT_IP);
+            MDC.remove(MDC_USER_AGENT);
         }
+    }
+
+    private static String resolveClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            // first hop is the originating client
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
