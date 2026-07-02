@@ -8,6 +8,7 @@ import {
   Award,
   GitBranch,
   Sparkles,
+  UserCircle,
   ChevronLeft,
   X,
 } from 'lucide-react'
@@ -22,12 +23,35 @@ interface NavItem {
   label: string
   href: string
   icon: React.ElementType
-  /** Undefined = visible to all authenticated roles */
   allowedRoles?: Role[]
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
+  {
+    label: 'My Profile',
+    href: ROUTES.STUDENT.PROFILE,
+    icon: UserCircle,
+    allowedRoles: [ROLES.STUDENT],
+  },
+  {
+    label: 'Browse Jobs',
+    href: ROUTES.STUDENT.JOB_POSTINGS,
+    icon: Briefcase,
+    allowedRoles: [ROLES.STUDENT],
+  },
+  {
+    label: 'My Applications',
+    href: ROUTES.STUDENT.MY_APPLICATIONS,
+    icon: FileCheck2,
+    allowedRoles: [ROLES.STUDENT],
+  },
+  {
+    label: 'My Certificates',
+    href: ROUTES.STUDENT.MY_CERTIFICATES,
+    icon: Award,
+    allowedRoles: [ROLES.STUDENT],
+  },
   {
     label: 'Students',
     href: ROUTES.OFFICER.STUDENTS,
@@ -78,7 +102,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"
@@ -95,13 +118,11 @@ export function Sidebar() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        {/* Header */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
           {!sidebarCollapsed && (
             <span className="truncate text-sm font-semibold text-foreground">Placement Intel</span>
           )}
           <div className="flex items-center">
-            {/* Desktop collapse toggle */}
             <button
               onClick={toggleSidebarCollapsed}
               className="hidden rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground lg:flex"
@@ -111,7 +132,6 @@ export function Sidebar() {
                 className={cn('h-4 w-4 transition-transform', sidebarCollapsed && 'rotate-180')}
               />
             </button>
-            {/* Mobile close */}
             <button
               onClick={() => setSidebarOpen(false)}
               className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
@@ -122,7 +142,6 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-2" aria-label="Primary">
           <ul className="space-y-1">
             {visibleItems.map((item) => {

@@ -20,7 +20,22 @@
     <properties>
         <java.version>17</java.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <awssdk.version>2.28.16</awssdk.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- AWS SDK v2 BOM — pins versions for the S3 storage adapter
+                 (also used for MinIO and any S3-compatible object store). -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Web (REST controllers) -->
@@ -128,6 +143,23 @@
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
             <version>8.10.1</version>
+        </dependency>
+
+        <!-- Spring Mail — SMTP delivery for the notification email provider.
+             Points at MailHog in dev and a real SMTP relay in production; the
+             notification.email.enabled flag gates actual dispatch. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- AWS SDK v2 S3 — backs the S3/MinIO/S3-compatible storage provider.
+             Includes the S3 pre-signer for time-limited download URLs. The
+             active storage provider is selected via the 'storage.provider' property;
+             this client is only instantiated when storage.provider=s3. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
         </dependency>
 
         <!-- Testing -->

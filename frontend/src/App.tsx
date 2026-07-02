@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { NotificationProvider } from '@/providers/NotificationProvider'
+import { SessionProvider } from '@/features/auth/SessionProvider'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { PublicRoute } from '@/routes/PublicRoute'
 import { AuthLayout } from '@/layouts/AuthLayout'
@@ -12,15 +13,25 @@ import { TooltipProvider } from '@/shared/ui/tooltip'
 import { ROUTES } from '@/constants/routes'
 import LoadingPage from '@/pages/LoadingPage'
 
-// Lazy-loaded pages — each route in its own chunk
+// Lazy-loaded pages
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const ForbiddenPage = lazy(() => import('@/pages/ForbiddenPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 
-// Auth feature pages — implemented in Phase 2 auth:
-// const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
-// const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
-// const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+// Auth feature pages
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
+const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+
+// Student feature pages
+const StudentProfilePage = lazy(() => import('@/features/students/pages/StudentProfilePage'))
+const StudentsListPage = lazy(() => import('@/features/students/pages/StudentsListPage'))
+const StudentDetailPage = lazy(() => import('@/features/students/pages/StudentDetailPage'))
+
+// Company feature pages
+const CompaniesListPage = lazy(() => import('@/features/companies/pages/CompaniesListPage'))
+const CompanyDetailPage = lazy(() => import('@/features/companies/pages/CompanyDetailPage'))
+const CreateCompanyPage = lazy(() => import('@/features/companies/pages/CreateCompanyPage'))
 
 function AppRoutes(): React.ReactElement {
   return (
@@ -32,37 +43,29 @@ function AppRoutes(): React.ReactElement {
         {/* Public routes — redirect authenticated users away */}
         <Route element={<PublicRoute />}>
           <Route element={<AuthLayout />}>
-            <Route
-              path={ROUTES.LOGIN}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Login — Phase 2 Auth
-                </div>
-              }
-            />
-            <Route
-              path={ROUTES.REGISTER}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Register — Phase 2 Auth
-                </div>
-              }
-            />
-            <Route
-              path={ROUTES.FORGOT_PASSWORD}
-              element={
-                <div className="text-center text-sm text-muted-foreground">
-                  Forgot Password — Phase 2 Auth
-                </div>
-              }
-            />
+            <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
+            <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
           </Route>
         </Route>
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
+            {/* Main dashboard */}
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
+
+            {/* Student routes */}
+            <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfilePage />} />
+
+            {/* Officer/Admin routes — Students */}
+            <Route path={ROUTES.OFFICER.STUDENTS} element={<StudentsListPage />} />
+            <Route path={`${ROUTES.OFFICER.STUDENTS}/:id`} element={<StudentDetailPage />} />
+
+            {/* Companies — all authenticated roles */}
+            <Route path={ROUTES.OFFICER.COMPANIES} element={<CompaniesListPage />} />
+            <Route path={ROUTES.OFFICER.CREATE_COMPANY} element={<CreateCompanyPage />} />
+            <Route path={`${ROUTES.OFFICER.COMPANIES}/:id`} element={<CompanyDetailPage />} />
           </Route>
         </Route>
 
@@ -83,7 +86,9 @@ export default function App(): React.ReactElement {
           <TooltipProvider>
             <NotificationProvider />
             <BrowserRouter>
-              <AppRoutes />
+              <SessionProvider>
+                <AppRoutes />
+              </SessionProvider>
             </BrowserRouter>
           </TooltipProvider>
         </ThemeProvider>

@@ -1,2 +1,7 @@
 #!/bin/sh
-cd frontend && npx lint-staged
+# Lint the frontend only when it is present AND its toolchain is installed.
+# Skips gracefully for backend-only commits or checkouts without frontend deps,
+# so commits never fail merely because node_modules is absent.
+if [ -d frontend ] && [ -x frontend/node_modules/.bin/lint-staged ]; then
+  cd frontend && npx lint-staged
+fi

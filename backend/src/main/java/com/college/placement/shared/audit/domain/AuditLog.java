@@ -49,6 +49,31 @@ public class AuditLog extends Auditable {
     @Column(columnDefinition = "TEXT")
     private String payload;
 
+    @Size(max = 100)
+    @Column(name = "correlation_id", length = 100)
+    private String correlationId;
+
+    @Size(max = 64)
+    @Column(name = "ip_address", length = 64)
+    private String ipAddress;
+
+    @Size(max = 512)
+    @Column(name = "user_agent", length = 512)
+    private String userAgent;
+
+    @Column(name = "previous_value", columnDefinition = "TEXT")
+    private String previousValue;
+
+    @Column(name = "new_value", columnDefinition = "TEXT")
+    private String newValue;
+
+    @Size(max = 1000)
+    @Column(length = 1000)
+    private String reason;
+
+    @Column(nullable = false)
+    private boolean success = true;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

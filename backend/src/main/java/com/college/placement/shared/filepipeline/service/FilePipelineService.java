@@ -7,6 +7,8 @@ import com.college.placement.shared.filepipeline.exception.FileStorageException;
 import com.college.placement.shared.filepipeline.exception.VirusDetectedException;
 import com.college.placement.shared.filepipeline.repository.FileScanRecordRepository;
 import com.college.placement.shared.observability.metrics.FilePipelineMetrics;
+import com.college.placement.shared.storage.FileStorageProvider;
+import com.college.placement.shared.storage.StorageProperties;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -18,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -26,23 +30,26 @@ public class FilePipelineService {
 
     private final FileValidationService validationService;
     private final FileHashService hashService;
-    private final FileStorageService storageService;
+    private final FileStorageProvider storageService;
     private final ClamAvService clamAvService;
     private final FileScanRecordRepository recordRepository;
     private final FilePipelineMetrics metrics;
+    private final StorageProperties storageProperties;
 
     public FilePipelineService(FileValidationService validationService,
                                FileHashService hashService,
-                               FileStorageService storageService,
+                               FileStorageProvider storageService,
                                ClamAvService clamAvService,
                                FileScanRecordRepository recordRepository,
-                               FilePipelineMetrics metrics) {
+                               FilePipelineMetrics metrics,
+                               StorageProperties storageProperties) {
         this.validationService = validationService;
         this.hashService       = hashService;
         this.storageService    = storageService;
         this.clamAvService     = clamAvService;
         this.recordRepository  = recordRepository;
         this.metrics           = metrics;
+        this.storageProperties = storageProperties;
     }
 
     /**
@@ -134,6 +141,23 @@ public class FilePipelineService {
      */
     public FileScanRecord findRecord(UUID id) {
         return findOrThrow(id);
+    }
+
+    /**
+     * Returns a time-limited signed download URL for the file when the active storage
+     * provider supports presigning (e.g. S3 / MinIO). Returns {@link Optional#empty()}
+     * for backends without presigning (e.g. local disk), in which case callers should
+     * fall back to streaming via {@code GET /api/files/{id}}. Quarantined files are
+     * never linkable.
+     */
+    public Optional<String> signedDownloadUrl(UUID id) {
+        FileScanRecord record = findOrThrow(id);
+        if (record.isQuarantined()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "File is quarantined and cannot be downloaded.");
+        }
+        Duration ttl = Duration.ofSeconds(storageProperties.getSignedUrlTtlSeconds());
+        return storageService.generateSignedUrl(record.getStorageKey(), ttl);
     }
 
     /**

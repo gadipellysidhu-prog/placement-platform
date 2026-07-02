@@ -1,12 +1,14 @@
-import { Menu } from 'lucide-react'
+import { Menu, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUIStore } from '@/stores/ui.store'
+import { useLogout } from '@/features/auth/hooks/use-logout'
 import { ROLE_LABELS } from '@/constants/roles'
 
-/** Top navigation bar — hamburger (mobile) + user info chip. */
+/** Top navigation bar — hamburger (mobile) + user info chip + logout. */
 export function TopNav() {
   const user = useAuthStore((s) => s.user)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
+  const logout = useLogout()
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4">
@@ -22,9 +24,9 @@ export function TopNav() {
       {/* Desktop spacer */}
       <div className="hidden lg:block" aria-hidden="true" />
 
-      {/* User info */}
+      {/* User info + logout */}
       {user && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium leading-none text-foreground">{user.email}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</p>
@@ -35,6 +37,14 @@ export function TopNav() {
           >
             {user.email.charAt(0)}
           </div>
+          <button
+            onClick={() => void logout()}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
       )}
     </header>
