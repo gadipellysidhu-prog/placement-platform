@@ -17,8 +17,19 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
     @EntityGraph(attributePaths = {"company"})
     Optional<JobPosting> findById(UUID id);
 
+    /** Loads a posting with its required skills and eligible branches for detail responses. */
+    @EntityGraph(attributePaths = {"company", "requiredSkills", "eligibleBranches"})
+    Optional<JobPosting> findDetailedById(UUID id);
+
     @EntityGraph(attributePaths = {"company"})
     Page<JobPosting> findByStatus(JobPostingStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"company"})
+    Page<JobPosting> findByStatusAndTitleContainingIgnoreCase(JobPostingStatus status, String title, Pageable pageable);
+
+    @Override
+    @EntityGraph(attributePaths = {"company"})
+    Page<JobPosting> findAll(Pageable pageable);
 
     List<JobPosting> findByCompany(Company company);
 

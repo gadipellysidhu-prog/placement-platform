@@ -156,6 +156,21 @@ public class JobPostingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job posting not found"));
     }
 
+    /** Loads a posting with its required skills and eligible branches initialised for detail responses. */
+    @Transactional(readOnly = true)
+    public JobPosting getDetailedById(UUID id) {
+        return jobPostingRepository.findDetailedById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job posting not found"));
+    }
+
+    /** Officer-facing listing across all statuses, optionally filtered by a single status. */
+    @Transactional(readOnly = true)
+    public Page<JobPosting> getManagedPostings(JobPostingStatus status, Pageable pageable) {
+        return status == null
+                ? jobPostingRepository.findAll(pageable)
+                : jobPostingRepository.findByStatus(status, pageable);
+    }
+
     @Transactional(readOnly = true)
     public List<JobPosting> getByCompany(UUID companyId) {
         Company company = companyService.getById(companyId);
@@ -165,5 +180,14 @@ public class JobPostingService {
     @Transactional(readOnly = true)
     public Page<JobPosting> getOpenPostings(Pageable pageable) {
         return jobPostingRepository.findByStatus(JobPostingStatus.OPEN, pageable);
+    }
+
+    /** Open postings, optionally filtered by a case-insensitive title substring. */
+    @Transactional(readOnly = true)
+    public Page<JobPosting> getOpenPostings(String title, Pageable pageable) {
+        return (title == null || title.isBlank())
+                ? jobPostingRepository.findByStatus(JobPostingStatus.OPEN, pageable)
+                : jobPostingRepository.findByStatusAndTitleContainingIgnoreCase(
+                        JobPostingStatus.OPEN, title, pageable);
     }
 }

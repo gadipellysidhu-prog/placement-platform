@@ -1,5 +1,6 @@
 package com.college.placement.modules.company.controller;
 
+import com.college.placement.modules.company.domain.JobPostingStatus;
 import com.college.placement.modules.company.dto.JobPostingCreateRequest;
 import com.college.placement.modules.company.dto.JobPostingResponse;
 import com.college.placement.modules.company.dto.JobPostingUpdateRequest;
@@ -39,16 +40,26 @@ public class JobPostingController {
 
     @GetMapping
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "List open job postings (paginated)")
-    public ResponseEntity<Page<JobPostingResponse>> listOpen(Pageable pageable) {
-        return ResponseEntity.ok(jobPostingService.getOpenPostings(pageable).map(JobPostingResponse::from));
+    @Operation(summary = "List open job postings (paginated), optionally filtered by title")
+    public ResponseEntity<Page<JobPostingResponse>> listOpen(
+            @RequestParam(required = false) String title, Pageable pageable) {
+        return ResponseEntity.ok(jobPostingService.getOpenPostings(title, pageable).map(JobPostingResponse::from));
+    }
+
+    @GetMapping("/manage")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "List job postings across all statuses (officer), optionally filtered by status")
+    public ResponseEntity<Page<JobPostingResponse>> listManage(
+            @RequestParam(required = false) JobPostingStatus status, Pageable pageable) {
+        return ResponseEntity.ok(
+                jobPostingService.getManagedPostings(status, pageable).map(JobPostingResponse::from));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get job posting by ID")
+    @Operation(summary = "Get job posting by ID (with required skills and eligible branches)")
     public ResponseEntity<JobPostingResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(JobPostingResponse.from(jobPostingService.getById(id)));
+        return ResponseEntity.ok(JobPostingResponse.fromDetailed(jobPostingService.getDetailedById(id)));
     }
 
     @PutMapping("/{id}")
@@ -80,5 +91,37 @@ public class JobPostingController {
     @Operation(summary = "Cancel a job posting")
     public ResponseEntity<JobPostingResponse> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(JobPostingResponse.from(jobPostingService.cancelPosting(id)));
+    }
+
+    @PostMapping("/{id}/skills/{skillId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Add a required skill to a job posting")
+    public ResponseEntity<JobPostingResponse> addSkill(@PathVariable UUID id, @PathVariable UUID skillId) {
+        jobPostingService.addRequiredSkill(id, skillId);
+        return ResponseEntity.ok(JobPostingResponse.fromDetailed(jobPostingService.getDetailedById(id)));
+    }
+
+    @DeleteMapping("/{id}/skills/{skillId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Remove a required skill from a job posting")
+    public ResponseEntity<JobPostingResponse> removeSkill(@PathVariable UUID id, @PathVariable UUID skillId) {
+        jobPostingService.removeRequiredSkill(id, skillId);
+        return ResponseEntity.ok(JobPostingResponse.fromDetailed(jobPostingService.getDetailedById(id)));
+    }
+
+    @PostMapping("/{id}/branches/{branchId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Add an eligible branch to a job posting")
+    public ResponseEntity<JobPostingResponse> addBranch(@PathVariable UUID id, @PathVariable UUID branchId) {
+        jobPostingService.addEligibleBranch(id, branchId);
+        return ResponseEntity.ok(JobPostingResponse.fromDetailed(jobPostingService.getDetailedById(id)));
+    }
+
+    @DeleteMapping("/{id}/branches/{branchId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Remove an eligible branch from a job posting")
+    public ResponseEntity<JobPostingResponse> removeBranch(@PathVariable UUID id, @PathVariable UUID branchId) {
+        jobPostingService.removeEligibleBranch(id, branchId);
+        return ResponseEntity.ok(JobPostingResponse.fromDetailed(jobPostingService.getDetailedById(id)));
     }
 }
