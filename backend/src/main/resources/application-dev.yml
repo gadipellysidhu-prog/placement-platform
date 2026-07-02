@@ -7,6 +7,15 @@ spring:
 
   jpa:
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# MailHog (docker-compose.dev) receives all dev email on localhost:1025.
+notification:
+  email:
+    enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+    from: ${NOTIFICATION_EMAIL_FROM:no-reply@placement.local}
 
 # In development, /actuator/health shows full component details (db, diskSpace, ...).
 management:

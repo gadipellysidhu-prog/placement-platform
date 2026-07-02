@@ -1,6 +1,8 @@
 package com.college.placement.security;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
+import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
@@ -24,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -47,6 +50,7 @@ class AuthorizationOwnershipTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired PasswordEncoder passwordEncoder;
     @Autowired StudentRepository studentRepo;
     @Autowired CertificateRepository certRepo;
     @Autowired OfferRepository offerRepo;
@@ -164,11 +168,29 @@ class AuthorizationOwnershipTest {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private static final String TEST_PASSWORD = "password123";
+
     private TokenResponse register(String email, Role role) throws Exception {
-        MvcResult r = mvc.perform(post("/auth/register")
+        if (role == Role.ROLE_STUDENT) {
+            MvcResult r = mvc.perform(post("/auth/register")
+                            .contentType(JSON)
+                            .content(mapper.writeValueAsString(new RegisterRequest(email, TEST_PASSWORD, role))))
+                    .andExpect(status().isCreated()).andReturn();
+            return mapper.readValue(r.getResponse().getContentAsString(), TokenResponse.class);
+        }
+        return createPrivilegedUser(email, role);
+    }
+
+    private TokenResponse createPrivilegedUser(String email, Role role) throws Exception {
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(role);
+        userRepo.save(user);
+        MvcResult r = mvc.perform(post("/auth/login")
                         .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest(email, "password123", role))))
-                .andExpect(status().isCreated()).andReturn();
+                        .content(mapper.writeValueAsString(new LoginRequest(email, TEST_PASSWORD))))
+                .andExpect(status().isOk()).andReturn();
         return mapper.readValue(r.getResponse().getContentAsString(), TokenResponse.class);
     }
 

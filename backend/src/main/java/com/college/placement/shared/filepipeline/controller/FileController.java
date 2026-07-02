@@ -1,6 +1,7 @@
 package com.college.placement.shared.filepipeline.controller;
 
 import com.college.placement.shared.filepipeline.domain.FileScanRecord;
+import com.college.placement.shared.filepipeline.dto.FileDownloadLinkResponse;
 import com.college.placement.shared.filepipeline.dto.FileUploadResponse;
 import com.college.placement.shared.filepipeline.service.FilePipelineService;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +73,21 @@ public class FileController {
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(resource);
+    }
+
+    /**
+     * GET /api/files/{id}/link
+     * <p>
+     * Returns a time-limited signed URL when the active storage provider supports
+     * presigning (S3 / MinIO), letting clients download directly from object storage.
+     * Falls back to the streaming endpoint for local disk. Quarantined files return 403.
+     */
+    @GetMapping("/{id}/link")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<FileDownloadLinkResponse> downloadLink(@PathVariable UUID id) {
+        return ResponseEntity.ok(pipelineService.signedDownloadUrl(id)
+                .map(url -> FileDownloadLinkResponse.signed(id, url))
+                .orElseGet(() -> FileDownloadLinkResponse.stream(id)));
     }
 
     /**

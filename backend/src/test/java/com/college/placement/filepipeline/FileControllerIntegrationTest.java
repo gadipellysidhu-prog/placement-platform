@@ -1,5 +1,6 @@
 package com.college.placement.filepipeline;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -41,6 +43,7 @@ class FileControllerIntegrationTest {
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
     @Autowired FileScanRecordRepository fileScanRecordRepository;
+    @Autowired PasswordEncoder passwordEncoder;
 
     private static final String STUDENT_EMAIL  = "filestudent@test.com";
     private static final String ADMIN_EMAIL    = "fileadmin@test.com";
@@ -222,10 +225,18 @@ class FileControllerIntegrationTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String getToken(String email, Role role) throws Exception {
-        mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest(email, PASSWORD, role))))
-                .andExpect(status().isCreated());
+        if (role == Role.ROLE_STUDENT) {
+            mvc.perform(post("/auth/register")
+                            .contentType(JSON)
+                            .content(mapper.writeValueAsString(new RegisterRequest(email, PASSWORD, role))))
+                    .andExpect(status().isCreated());
+        } else {
+            AppUser user = new AppUser();
+            user.setEmail(email);
+            user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+            user.setRole(role);
+            userRepository.save(user);
+        }
 
         MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)

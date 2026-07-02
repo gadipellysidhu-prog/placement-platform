@@ -4,7 +4,7 @@
 #   .\scripts\generate-prod-keys.ps1          # generate RSA keys into .env.prod
 #   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
-# Startup order: postgres (healthy) → app (Flyway + Hibernate) → nginx
+# Startup order: postgres (healthy) → clamav (healthy) → app → nginx
 # Stack validates:
 #   docker compose -f docker-compose.prod.yml ps
 #   curl -sf https://localhost/actuator/health | jq .
@@ -45,6 +45,35 @@ services:
         reservations:
           memory: 256M
 
+  # ── ClamAV Antivirus Daemon ────────────────────────────────────────────────
+  clamav:
+    image: clamav/clamav:stable
+    container_name: placement-prod-clamav
+    restart: unless-stopped
+    volumes:
+      - clamav_data:/var/lib/clamav
+    networks:
+      - placement-prod-network
+    healthcheck:
+      test: ["CMD-SHELL", "clamdcheck.sh"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+        tag: "placement-clamav"
+
   # ── Spring Boot Application ────────────────────────────────────────────────
   app:
     build:
@@ -56,12 +85,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      clamav:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-placement_prod}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      SERVER_PORT: ${SERVER_PORT:-8081}
+      SERVER_PORT: ${SERVER_PORT:-8080}
       JWT_PRIVATE_KEY_PEM: ${JWT_PRIVATE_KEY_PEM}
       JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM}
       JWT_ACCESS_EXPIRY_MS: ${JWT_ACCESS_EXPIRY_MS:-900000}
@@ -69,21 +100,22 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-placement-platform}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-placement-api}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      FILE_UPLOAD_DIR: /app/uploads
+      FILE_UPLOAD_DIR: /data/uploads
       FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
       FILE_MAX_MULTIPART_SIZE: ${FILE_MAX_MULTIPART_SIZE:-10MB}
-      FILE_SCAN_ENABLED: ${FILE_SCAN_ENABLED:-false}
-      CLAMAV_HOST: ${CLAMAV_HOST:-}
+      FILE_SCAN_ENABLED: ${FILE_SCAN_ENABLED:-true}
+      CLAMAV_HOST: ${CLAMAV_HOST:-clamav}
       CLAMAV_PORT: ${CLAMAV_PORT:-3310}
+      CLAMAV_TIMEOUT_MS: ${CLAMAV_TIMEOUT_MS:-30000}
     volumes:
-      - placement_prod_uploads:/app/uploads
+      - placement_prod_uploads:/data/uploads
     # No external port exposure — nginx is the only ingress point
     expose:
-      - "${SERVER_PORT:-8081}"
+      - "${SERVER_PORT:-8080}"
     networks:
       - placement-prod-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:${SERVER_PORT:-8081}/actuator/health/readiness || exit 1"]
+      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:${SERVER_PORT:-8080}/actuator/health/readiness || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -154,6 +186,9 @@ volumes:
     driver: local
   placement_prod_uploads:
     name: placement_prod_uploads
+    driver: local
+  clamav_data:
+    name: placement_prod_clamav_data
     driver: local
   nginx_logs:
     name: placement_prod_nginx_logs

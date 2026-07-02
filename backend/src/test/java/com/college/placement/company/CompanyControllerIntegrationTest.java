@@ -1,7 +1,8 @@
 package com.college.placement.company;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
-import com.college.placement.modules.auth.dto.RegisterRequest;
+import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
@@ -10,6 +11,7 @@ import com.college.placement.modules.company.dto.CompanyUpdateRequest;
 import com.college.placement.modules.company.repository.CompanyRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,6 +35,7 @@ class CompanyControllerIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired PasswordEncoder passwordEncoder;
     @Autowired CompanyRepository companyRepo;
     @Autowired com.college.placement.modules.placement.repository.OfferRepository offerRepo;
     @Autowired com.college.placement.modules.placement.repository.JobApplicationRepository applicationRepo;
@@ -169,11 +172,34 @@ class CompanyControllerIntegrationTest {
 
     // Helpers
 
+    private static final String TEST_PASSWORD = "password123";
+
     private TokenResponse register(String email, Role role) throws Exception {
-        MvcResult result = mvc.perform(post("/auth/register")
+        if (role == Role.ROLE_STUDENT) {
+            MvcResult result = mvc.perform(post("/auth/register")
+                            .contentType(JSON)
+                            .content(mapper.writeValueAsString(new com.college.placement.modules.auth.dto.RegisterRequest(email, TEST_PASSWORD, role))))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+            return mapper.readValue(result.getResponse().getContentAsString(), TokenResponse.class);
+        }
+        return createPrivilegedUser(email, role);
+    }
+
+    private TokenResponse createPrivilegedUser(String email, Role role) throws Exception {
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(role);
+        userRepo.save(user);
+        return login(email);
+    }
+
+    private TokenResponse login(String email) throws Exception {
+        MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest(email, "password123", role))))
-                .andExpect(status().isCreated())
+                        .content(mapper.writeValueAsString(new LoginRequest(email, TEST_PASSWORD))))
+                .andExpect(status().isOk())
                 .andReturn();
         return mapper.readValue(result.getResponse().getContentAsString(), TokenResponse.class);
     }

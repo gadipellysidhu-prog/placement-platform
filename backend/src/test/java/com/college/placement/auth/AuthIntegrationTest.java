@@ -1,5 +1,6 @@
 package com.college.placement.auth;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.RefreshToken;
 import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
@@ -9,6 +10,7 @@ import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,7 @@ class AuthIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired PasswordEncoder passwordEncoder;
 
     private static final String STUDENT_EMAIL   = "student@test.com";
     private static final String OFFICER_EMAIL   = "officer@test.com";
@@ -395,7 +398,7 @@ class AuthIntegrationTest {
 
     @Test
     void rbac_officerAccessingAdminEndpoint_returns403() throws Exception {
-        TokenResponse tokens = register(OFFICER_EMAIL, Role.ROLE_PLACEMENT_OFFICER);
+        TokenResponse tokens = createPrivilegedUser(OFFICER_EMAIL, Role.ROLE_PLACEMENT_OFFICER);
 
         mvc.perform(get("/api/users/admin-only")
                         .header("Authorization", "Bearer " + tokens.accessToken()))
@@ -405,11 +408,20 @@ class AuthIntegrationTest {
 
     @Test
     void rbac_adminAccessingAdminEndpoint_returns200() throws Exception {
-        TokenResponse tokens = register(ADMIN_EMAIL, Role.ROLE_ADMIN);
+        TokenResponse tokens = createPrivilegedUser(ADMIN_EMAIL, Role.ROLE_ADMIN);
 
         mvc.perform(get("/api/users/admin-only")
                         .header("Authorization", "Bearer " + tokens.accessToken()))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void register_withPrivilegedRole_returns400() throws Exception {
+        mvc.perform(post("/auth/register")
+                        .contentType(JSON)
+                        .content(toJson(new RegisterRequest(OFFICER_EMAIL, TEST_PASSWORD, Role.ROLE_PLACEMENT_OFFICER))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -419,6 +431,24 @@ class AuthIntegrationTest {
                         .contentType(JSON)
                         .content(toJson(new RegisterRequest(email, TEST_PASSWORD, role))))
                 .andExpect(status().isCreated())
+                .andReturn();
+        return fromJson(result, TokenResponse.class);
+    }
+
+    private TokenResponse createPrivilegedUser(String email, Role role) throws Exception {
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(role);
+        userRepository.save(user);
+        return login(email);
+    }
+
+    private TokenResponse login(String email) throws Exception {
+        MvcResult result = mvc.perform(post("/auth/login")
+                        .contentType(JSON)
+                        .content(toJson(new LoginRequest(email, TEST_PASSWORD))))
+                .andExpect(status().isOk())
                 .andReturn();
         return fromJson(result, TokenResponse.class);
     }

@@ -2,6 +2,7 @@ package com.college.placement.modules.auth.service;
 
 import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.RefreshToken;
+import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
@@ -16,9 +17,11 @@ import com.college.placement.shared.security.SecurityProperties;
 import com.college.placement.shared.security.JwtProperties;
 import com.college.placement.shared.security.JwtService;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -66,6 +69,11 @@ public class AuthService {
     public TokenResponse register(RegisterRequest request) {
         Timer.Sample sample = authMetrics.startSample();
         try {
+            if (request.role() != Role.ROLE_STUDENT) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Public registration is restricted to ROLE_STUDENT accounts.");
+            }
+
             if (userRepository.existsByEmail(request.email())) {
                 throw AuthException.emailAlreadyRegistered();
             }
@@ -141,14 +149,6 @@ public class AuthService {
             t.setRevoked(true);
             refreshTokenRepository.save(t);
         });
-    }
-
-    public void initiateEmailVerification(String email) {
-        // Placeholder: Phase 6 outbox will dispatch verification email.
-    }
-
-    public void initiateForgotPassword(String email) {
-        // Placeholder: Phase 6 outbox will dispatch password reset email.
     }
 
     // ── Brute-force protection ────────────────────────────────────────────────

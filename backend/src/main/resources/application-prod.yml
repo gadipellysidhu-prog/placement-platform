@@ -15,6 +15,15 @@ spring:
   jpa:
     show-sql: false
     open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+        format_sql: false
 
   flyway:
     baseline-on-migrate: false
@@ -35,7 +44,8 @@ management:
     web:
       exposure:
         # Expose only what operations needs; never expose env/configprops/beans in prod
-        include: health,info,metrics,prometheus
+        # metrics endpoint omitted — Prometheus scrapes /actuator/prometheus instead
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: when-authorized

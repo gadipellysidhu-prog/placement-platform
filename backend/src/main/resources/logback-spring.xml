@@ -33,8 +33,22 @@
                 <!-- MDC fields (traceId, requestId) auto-included by LogstashEncoder -->
             </encoder>
         </appender>
-        <root level="WARN">
+
+        <!--
+          Async wrapper: log calls return immediately to the caller thread.
+          Queue of 512 absorbs bursts; discardingThreshold=0 never silently drops WARN/ERROR.
+          neverBlock=false lets the queue back-pressure callers rather than lose events.
+        -->
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+            <neverBlock>false</neverBlock>
             <appender-ref ref="JSON_CONSOLE"/>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="ASYNC_JSON"/>
         </root>
         <logger name="com.college.placement" level="INFO"/>
         <logger name="org.flywaydb" level="INFO"/>

@@ -292,6 +292,7 @@ jobs:
           docker logs "$CID" 2>&1 | tail -60
           docker stop "$CID" || true
           exit 1
+   # ── Stage 7b: Container Security Scan (Trivy) ────────────────────────────
   # ── Stage 7b: Container Security Scan (Trivy) ────────────────────────────
   container-scan:
     name: "Stage 7b · Container Scan"
@@ -352,7 +353,6 @@ jobs:
             --ignorefile backend/.trivyignore \
             --exit-code 0 \
             placement-platform:scan
-
   # ── Stage 8: Deployment Readiness ─────────────────────────────────────────
   deployment-readiness:
     name: "Stage 8 · Deployment Readiness"

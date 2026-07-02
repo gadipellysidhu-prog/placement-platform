@@ -24,4 +24,6 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
     List<Certificate> findByStudent(Student student);
 
     List<Certificate> findByStudentAndVerificationStatus(Student student, CertificateVerificationStatus status);
+
+    long countByVerificationStatus(com.college.placement.modules.certificate.domain.CertificateVerificationStatus status);
 }

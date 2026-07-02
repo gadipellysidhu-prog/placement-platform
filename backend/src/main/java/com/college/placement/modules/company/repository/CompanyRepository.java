@@ -14,4 +14,6 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
     boolean existsByName(String name);
 
     List<Company> findByIndustry(String industry);
+
+    long countByStatus(com.college.placement.modules.company.domain.CompanyStatus status);
 }

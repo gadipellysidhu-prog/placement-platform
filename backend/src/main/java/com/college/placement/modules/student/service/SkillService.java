@@ -37,6 +37,17 @@ public class SkillService {
         return skillRepository.save(skill);
     }
 
+    @Transactional
+    public Skill updateSkill(UUID id, String name, String category) {
+        Skill skill = getById(id);
+        if (!skill.getName().equals(name) && skillRepository.existsByName(name)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Skill name already exists");
+        }
+        skill.setName(name);
+        skill.setCategory(category);
+        return skillRepository.save(skill);
+    }
+
     @Transactional(readOnly = true)
     public Skill getById(UUID id) {
         return skillRepository.findById(id)
