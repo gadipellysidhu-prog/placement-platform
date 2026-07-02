@@ -89,6 +89,7 @@ class AccountVerificationIntegrationTest {
     @Test
     void passwordReset_fullFlow_changesPassword_andRevokesSessions() throws Exception {
         register(EMAIL);
+        verify(EMAIL); // password reset targets an existing, verified account
 
         mvc.perform(post("/auth/forgot-password").contentType(JSON)
                         .content("{\"email\":\"" + EMAIL + "\"}"))
@@ -140,13 +141,20 @@ class AccountVerificationIntegrationTest {
                 .andExpect(status().isCreated());
     }
 
+    /** Marks an account verified (password reset targets an existing verified user). */
+    private void verify(String email) {
+        AppUser user = userRepo.findByEmail(email).orElseThrow();
+        user.setEmailVerified(true);
+        userRepo.save(user);
+    }
+
     /** Finds the most recent notification with the given subject and extracts its embedded token. */
     private String extractToken(String subject) {
         NotificationHistory history = notificationRepo
                 .findByUser(userRepo.findByEmail(EMAIL).orElseThrow(), PageRequest.of(0, 20))
                 .getContent().stream()
                 .filter(h -> subject.equals(h.getSubject()))
-                .findFirst()
+                .max(java.util.Comparator.comparing(NotificationHistory::getCreatedAt))
                 .orElseThrow(() -> new AssertionError("No notification with subject: " + subject));
         Matcher m = TOKEN.matcher(history.getBody());
         assertThat(m.find()).as("token present in email body").isTrue();

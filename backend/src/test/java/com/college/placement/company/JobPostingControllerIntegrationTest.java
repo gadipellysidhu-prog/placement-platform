@@ -383,21 +383,21 @@ class JobPostingControllerIntegrationTest {
     private static final String TEST_PASSWORD = "password123";
 
     private TokenResponse createOfficer(String email) throws Exception {
-        AppUser user = new AppUser();
-        user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
-        user.setRole(Role.ROLE_PLACEMENT_OFFICER);
-        userRepo.save(user);
-        return login(email);
+        return createVerifiedUser(email, Role.ROLE_PLACEMENT_OFFICER);
     }
 
     private TokenResponse registerStudent(String email) throws Exception {
-        MvcResult result = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest(email, TEST_PASSWORD, Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return mapper.readValue(result.getResponse().getContentAsString(), TokenResponse.class);
+        return createVerifiedUser(email, Role.ROLE_STUDENT);
+    }
+
+    private TokenResponse createVerifiedUser(String email, Role role) throws Exception {
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
+        user.setRole(role);
+        user.setEmailVerified(true);
+        userRepo.save(user);
+        return login(email);
     }
 
     private TokenResponse login(String email) throws Exception {
