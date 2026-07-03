@@ -38,6 +38,9 @@ public class VerificationProperties {
     /** Frontend path that consumes a password-reset token. */
     private String passwordResetPath = "/reset-password";
 
+    /** Frontend path that consumes a user-invitation token. */
+    private String invitationPath = "/accept-invitation";
+
     /** Human-readable issuer name used in email copy. */
     private String issuer = "Placement Platform";
 
