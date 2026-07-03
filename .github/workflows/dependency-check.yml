@@ -53,7 +53,7 @@ jobs:
           mkdir -p "$DATA_DIR"
 
           ARGS=(
-            org.owasp:dependency-check-maven:10.0.4:check
+            org.owasp:dependency-check-maven:12.2.2:check
             -DfailBuildOnCVSS=7          # fail on HIGH+CRITICAL (real vulnerabilities)
             -Dformat=HTML,XML
             -DskipTestScope=true

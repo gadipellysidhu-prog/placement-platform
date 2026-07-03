@@ -281,7 +281,10 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>10.0.4</version>
+                <!-- 12.2.2: 10.0.4's H2 schema stores NVD reference URLs in a
+                     VARCHAR(1000) column that overflows on newer NVD records
+                     (SQL state 22001 while updating CVEs). Fixed in later releases. -->
+                <version>12.2.2</version>
                 <configuration>
                     <failBuildOnCVSS>7</failBuildOnCVSS>
                     <formats>
