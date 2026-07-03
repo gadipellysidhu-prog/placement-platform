@@ -121,6 +121,7 @@ class ObservabilityIntegrationTest {
         admin.setEmail("admin@obs.test");
         admin.setPasswordHash(passwordEncoder.encode("password123"));
         admin.setRole(Role.ROLE_ADMIN);
+        admin.setEmailVerified(true);
         userRepository.save(admin);
 
         MvcResult result = mockMvc.perform(post("/auth/login")

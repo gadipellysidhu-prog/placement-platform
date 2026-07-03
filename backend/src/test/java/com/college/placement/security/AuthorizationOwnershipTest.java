@@ -171,13 +171,6 @@ class AuthorizationOwnershipTest {
     private static final String TEST_PASSWORD = "password123";
 
     private TokenResponse register(String email, Role role) throws Exception {
-        if (role == Role.ROLE_STUDENT) {
-            MvcResult r = mvc.perform(post("/auth/register")
-                            .contentType(JSON)
-                            .content(mapper.writeValueAsString(new RegisterRequest(email, TEST_PASSWORD, role))))
-                    .andExpect(status().isCreated()).andReturn();
-            return mapper.readValue(r.getResponse().getContentAsString(), TokenResponse.class);
-        }
         return createPrivilegedUser(email, role);
     }
 
@@ -186,6 +179,7 @@ class AuthorizationOwnershipTest {
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
         user.setRole(role);
+        user.setEmailVerified(true);
         userRepo.save(user);
         MvcResult r = mvc.perform(post("/auth/login")
                         .contentType(JSON)

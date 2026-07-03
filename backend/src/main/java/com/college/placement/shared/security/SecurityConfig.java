@@ -37,6 +37,7 @@ public class SecurityConfig {
         new AntPathRequestMatcher("/auth/refresh"),
         new AntPathRequestMatcher("/auth/verify-email/request"),
         new AntPathRequestMatcher("/auth/verify-email/confirm"),
+        new AntPathRequestMatcher("/auth/resend-verification"),
         new AntPathRequestMatcher("/auth/forgot-password"),
         new AntPathRequestMatcher("/auth/reset-password"),
         new AntPathRequestMatcher("/actuator/health"),
