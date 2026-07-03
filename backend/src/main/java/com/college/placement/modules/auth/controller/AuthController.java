@@ -1,5 +1,6 @@
 package com.college.placement.modules.auth.controller;
 
+import com.college.placement.modules.auth.dto.AcceptInvitationRequest;
 import com.college.placement.modules.auth.dto.ConfirmVerificationRequest;
 import com.college.placement.modules.auth.dto.EmailVerificationRequest;
 import com.college.placement.modules.auth.dto.ForgotPasswordRequest;
@@ -91,5 +92,12 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request) {
         verificationService.resetPassword(request.token(), request.newPassword());
         return ResponseEntity.ok(new MessageResponse("Password has been reset. Please sign in again."));
+    }
+
+    @PostMapping("/accept-invitation")
+    public ResponseEntity<MessageResponse> acceptInvitation(
+            @Valid @RequestBody AcceptInvitationRequest request) {
+        verificationService.acceptInvitation(request.token(), request.newPassword());
+        return ResponseEntity.ok(new MessageResponse("Invitation accepted. Your account is now active — please sign in."));
     }
 }
