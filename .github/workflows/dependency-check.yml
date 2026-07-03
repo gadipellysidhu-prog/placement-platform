@@ -27,9 +27,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Cache the NVD CVE database so weekly runs skip the ~300 MB download.
-      # The OWASP dependency-check Maven plugin stores its H2 database under
-      # ~/.dependency-check/data (not ~/.gradle — this project uses Maven).
+      # Cache the NVD CVE database so subsequent runs only fetch the incremental
+      # delta instead of re-downloading the full ~300 MB dataset. The plugin's
+      # dataDirectory is pinned to this exact path in the step below so the cache
+      # captures the DB the Maven plugin actually uses — its default lives inside
+      # the local Maven repo, which is why the old ~/.dependency-check/data cache
+      # never hit. The run_id key always writes a fresh entry; restore-keys pulls
+      # the newest prior cache so the DB carries forward run-to-run.
       - name: Cache NVD database
         uses: actions/cache@v4
         with:
@@ -43,18 +47,34 @@ jobs:
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: |
-          EXTRA=""
-          if [ -n "$NVD_API_KEY" ]; then
-            EXTRA="-DnvdApiKey=$NVD_API_KEY"
-          fi
-          # Fails build on CVSS >= 7 (HIGH+CRITICAL). Test-scope deps excluded.
-          mvn org.owasp:dependency-check-maven:10.0.4:check \
-            -DfailBuildOnCVSS=7 \
-            -Dformat=HTML,XML \
-            -DskipTestScope=true \
-            -DnvdApiDelay=6000 \
-            $EXTRA \
+          set -euo pipefail
+          # Pin the NVD data directory to the cached path (see cache step above).
+          DATA_DIR="$HOME/.dependency-check/data"
+          mkdir -p "$DATA_DIR"
+
+          ARGS=(
+            org.owasp:dependency-check-maven:10.0.4:check
+            -DfailBuildOnCVSS=7          # fail on HIGH+CRITICAL (real vulnerabilities)
+            -Dformat=HTML,XML
+            -DskipTestScope=true
+            "-DdataDirectory=$DATA_DIR"
             -B
+          )
+
+          if [ -n "${NVD_API_KEY:-}" ]; then
+            echo "NVD API key detected — using authenticated NVD API access (fast)."
+            # GitHub automatically masks the secret value in log output.
+            ARGS+=("-DnvdApiKey=$NVD_API_KEY")
+          else
+            echo "::warning::NVD_API_KEY secret is not set — falling back to the slow, rate-limited anonymous NVD download. Add the NVD_API_KEY repository secret under Settings → Secrets and variables → Actions."
+            ARGS+=("-DnvdApiDelay=6000")   # throttle is only needed for anonymous access
+          fi
+
+          # Suppressions (owasp-suppressions.xml), OSS Index disablement and
+          # failOnError come from the dependency-check plugin <configuration> in
+          # backend/pom.xml, so false positives stay handled and genuine
+          # vulnerabilities (CVSS >= 7) still fail the build.
+          mvn "${ARGS[@]}"
 
       - name: Upload OWASP report
         if: always()
