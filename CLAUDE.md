@@ -24,27 +24,13 @@ Unless explicitly requested:
 
 ## Current Project Status
 
-### Completed
+**Version 1.0 — backend feature-complete.** All bounded contexts are implemented,
+tested (345 tests), and gated by CI. The only deferred module is `policy` (an
+intentional placeholder). See the reconciled **Phase Status** table near the end
+of this file, plus `CHANGELOG.md` and `RELEASE_NOTES_v1.0.0.md`.
 
-- Phase 1: Authentication
-- JWT RS256 Authentication
-- Refresh Token Rotation
-- BCrypt Password Hashing
-- Role-Based Access Control
-- Security Filter Chain
-- Flyway Authentication Migration
-- Integration Tests
-- Docker Development Environment
-
-### Current Phase
-
-**Phase 2: Core Domain Foundation**
-
-Current implementation target: Student, Company, Recruiter, Branch, Skill
-
-### Future Phases
-
-Core Placement Domain · Business Services · REST APIs · Internal Event Bus · Transactional Outbox · File Pipeline · AI Governance · Observability · Security Hardening · Testing Expansion · CI/CD · Docker Production · Production Deployment
+Post-1.0 work is scoped per-change: branch from `main`, keep one concern per PR,
+add a Flyway migration for any schema change, and keep the quality gates green.
 
 ---
 
@@ -69,7 +55,7 @@ For every implementation phase:
 
 ## Project
 
-**Placement Intelligence & Skill Verification Platform** — a Spring Boot 3.3.5 / Java 17 modular monolith.
+**Placement Intelligence & Skill Verification Platform** — a Spring Boot 3.5.16 / Java 17 modular monolith.
 
 Working directory for all backend work: `backend/`
 
@@ -174,7 +160,8 @@ Each `modules/<name>/` sub-package follows a strict layered structure:
 - **Filter**: `JwtAuthenticationFilter` (OncePerRequestFilter). Never propagates exceptions; clears context on failure.
 - **Role hierarchy**: `ROLE_ADMIN > ROLE_PLACEMENT_OFFICER > ROLE_STUDENT`. Wired into `MethodSecurityExpressionHandler` for `@PreAuthorize`.
 - **Error format**: all security exceptions → RFC 7807 `ProblemDetail` JSON (`application/problem+json`) via `SecurityProblemHandler` (filter-level) and `GlobalExceptionHandler` (MVC-level).
-- **Public paths**: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/verify-email`, `/auth/forgot-password`, `/actuator/health`.
+- **Public paths**: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/accept-invitation`, `/actuator/health`, `/swagger-ui/**`.
+- **IAM / admin**: `/api/admin/users/**` requires `ROLE_ADMIN` (`@PreAuthorize`); administrative `AccountStatus` (`ACTIVE`/`DISABLED`/`LOCKED`/`INVITED`) gates login.
 
 ### Persistence
 
