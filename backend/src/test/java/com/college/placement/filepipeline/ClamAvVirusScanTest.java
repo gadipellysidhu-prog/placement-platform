@@ -208,18 +208,12 @@ class ClamAvVirusScanTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String getToken(String email, Role role) throws Exception {
-        if (role == Role.ROLE_STUDENT) {
-            mvc.perform(post("/auth/register")
-                            .contentType(JSON)
-                            .content(mapper.writeValueAsString(new RegisterRequest(email, PASSWORD, role))))
-                    .andReturn();
-        } else {
-            AppUser user = new AppUser();
-            user.setEmail(email);
-            user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-            user.setRole(role);
-            userRepo.save(user);
-        }
+        AppUser user = new AppUser();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        user.setRole(role);
+        user.setEmailVerified(true);
+        userRepo.save(user);
 
         MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)

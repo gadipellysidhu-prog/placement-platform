@@ -118,12 +118,7 @@ class DashboardControllerIntegrationTest {
     // Helpers
 
     private TokenResponse registerStudent(String email) throws Exception {
-        MvcResult result = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest(email, TEST_PASSWORD, Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return mapper.readValue(result.getResponse().getContentAsString(), TokenResponse.class);
+        return createPrivilegedUser(email, Role.ROLE_STUDENT);
     }
 
     private TokenResponse createPrivilegedUser(String email, Role role) throws Exception {
@@ -131,6 +126,7 @@ class DashboardControllerIntegrationTest {
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(TEST_PASSWORD));
         user.setRole(role);
+        user.setEmailVerified(true);
         userRepo.save(user);
         MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)

@@ -1,5 +1,6 @@
 package com.college.placement.modules.auth.controller;
 
+import com.college.placement.modules.auth.dto.AcceptInvitationRequest;
 import com.college.placement.modules.auth.dto.ConfirmVerificationRequest;
 import com.college.placement.modules.auth.dto.EmailVerificationRequest;
 import com.college.placement.modules.auth.dto.ForgotPasswordRequest;
@@ -33,8 +34,13 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<TokenResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        // Registration commits before this returns; send the verification email outside
+        // that transaction so a delivery failure cannot roll back the new account.
+        verificationService.requestEmailVerification(request.email());
+        return ResponseEntity.status(HttpStatus.CREATED).body(new MessageResponse(
+                "Registration successful. Please check your email to verify your account before signing in."));
     }
 
     @PostMapping("/login")
@@ -60,6 +66,13 @@ public class AuthController {
         return ResponseEntity.accepted().body(new MessageResponse(GENERIC_EMAIL_MESSAGE));
     }
 
+    @PostMapping("/resend-verification")
+    public ResponseEntity<MessageResponse> resendVerification(
+            @Valid @RequestBody EmailVerificationRequest request) {
+        verificationService.requestEmailVerification(request.email());
+        return ResponseEntity.accepted().body(new MessageResponse(GENERIC_EMAIL_MESSAGE));
+    }
+
     @PostMapping("/verify-email/confirm")
     public ResponseEntity<MessageResponse> confirmEmailVerification(
             @Valid @RequestBody ConfirmVerificationRequest request) {
@@ -79,5 +92,12 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request) {
         verificationService.resetPassword(request.token(), request.newPassword());
         return ResponseEntity.ok(new MessageResponse("Password has been reset. Please sign in again."));
+    }
+
+    @PostMapping("/accept-invitation")
+    public ResponseEntity<MessageResponse> acceptInvitation(
+            @Valid @RequestBody AcceptInvitationRequest request) {
+        verificationService.acceptInvitation(request.token(), request.newPassword());
+        return ResponseEntity.ok(new MessageResponse("Invitation accepted. Your account is now active — please sign in."));
     }
 }

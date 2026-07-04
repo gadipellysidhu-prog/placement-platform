@@ -381,14 +381,6 @@ class SecurityIntegrationTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private TokenResponse register(String email, Role role) throws Exception {
-        if (role == Role.ROLE_STUDENT) {
-            MvcResult result = mvc.perform(post("/auth/register")
-                            .contentType(JSON)
-                            .content(toJson(new RegisterRequest(email, TEST_PASS, role))))
-                    .andExpect(status().isCreated())
-                    .andReturn();
-            return objectMapper.readValue(result.getResponse().getContentAsString(), TokenResponse.class);
-        }
         return createPrivilegedUser(email, role);
     }
 
@@ -397,6 +389,7 @@ class SecurityIntegrationTest {
         user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(TEST_PASS));
         user.setRole(role);
+        user.setEmailVerified(true);
         userRepository.save(user);
         MvcResult result = mvc.perform(post("/auth/login")
                         .contentType(JSON)
