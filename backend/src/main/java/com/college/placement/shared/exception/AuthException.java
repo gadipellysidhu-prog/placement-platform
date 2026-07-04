@@ -29,4 +29,12 @@ public class AuthException extends ResponseStatusException {
         return new AuthException(HttpStatus.FORBIDDEN,
                 "Email address is not verified. Please verify your email before signing in.");
     }
+
+    public static AuthException accountDisabled() {
+        return new AuthException(HttpStatus.FORBIDDEN, "Account is disabled.");
+    }
+
+    public static AuthException accountNotActivated() {
+        return new AuthException(HttpStatus.FORBIDDEN, "Account has not been activated.");
+    }
 }

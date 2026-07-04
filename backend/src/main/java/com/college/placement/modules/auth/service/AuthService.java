@@ -117,6 +117,24 @@ public class AuthService {
                 throw AuthException.accountLocked();
             }
 
+            // Enforce administrative account state (Phase D): disabled/locked/invited
+            // accounts cannot obtain a JWT. Checked after a correct password.
+            switch (user.getStatus()) {
+                case DISABLED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountDisabled();
+                }
+                case LOCKED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountLocked();
+                }
+                case INVITED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountNotActivated();
+                }
+                case ACTIVE -> { /* proceed */ }
+            }
+
             // Enforce email verification: credentials are valid but no JWT is issued
             // until the account's email is verified. Checked only after a correct
             // password so it is not an unauthenticated existence/verification oracle.

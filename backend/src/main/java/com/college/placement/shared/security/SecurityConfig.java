@@ -40,6 +40,7 @@ public class SecurityConfig {
         new AntPathRequestMatcher("/auth/resend-verification"),
         new AntPathRequestMatcher("/auth/forgot-password"),
         new AntPathRequestMatcher("/auth/reset-password"),
+        new AntPathRequestMatcher("/auth/accept-invitation"),
         new AntPathRequestMatcher("/actuator/health"),
         new AntPathRequestMatcher("/actuator/health/**"),
         new AntPathRequestMatcher("/swagger-ui/**"),
