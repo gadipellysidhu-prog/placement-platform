@@ -29,6 +29,13 @@
              Log4j artifacts through this property, so no per-artifact pin is needed
              and dependency convergence is preserved. -->
         <log4j2.version>2.26.1</log4j2.version>
+        <!-- Override the Spring Boot 3.5.16-managed Tomcat version (10.1.55) to the
+             latest stable patch. Remediates CVE-2026-55276, CVE-2026-53434 and
+             CVE-2026-53404 (effective web.xml logging gap, FFM connector CRL
+             validation gap, RewriteValve OR-chain short-circuit), all fixed in
+             10.1.56 and all flagged >= CVSS 7 by NVD/dependency-check even though
+             Apache itself rates them Low severity. -->
+        <tomcat.version>10.1.56</tomcat.version>
     </properties>
 
     <dependencyManagement>
