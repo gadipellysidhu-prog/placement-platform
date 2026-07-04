@@ -1,6 +1,7 @@
 package com.college.placement.modules.auth.service;
 
 import com.college.placement.modules.auth.config.VerificationProperties;
+import com.college.placement.modules.auth.domain.AccountStatus;
 import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.VerificationToken;
 import com.college.placement.modules.auth.domain.VerificationTokenType;
@@ -12,6 +13,7 @@ import com.college.placement.shared.audit.service.AuditService;
 import com.college.placement.shared.eventbus.EventPublisher;
 import com.college.placement.shared.eventbus.events.EmailVerifiedEvent;
 import com.college.placement.shared.eventbus.events.PasswordResetCompletedEvent;
+import com.college.placement.shared.eventbus.events.UserEnabledEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -125,6 +127,25 @@ public class AccountVerificationService {
         refreshTokenRepository.revokeAllByUser(user);
         eventPublisher.publish(PasswordResetCompletedEvent.of(user.getId(), user.getEmail()));
         auditService.record(ENTITY, user.getId().toString(), "PASSWORD_RESET");
+    }
+
+    // ── Invitation acceptance ────────────────────────────────────────────────
+
+    /**
+     * Consumes a user-invitation token, sets the invitee's password and activates
+     * the account (status ACTIVE, email verified). One-time and replay-protected
+     * by the underlying token subsystem.
+     */
+    @Transactional
+    public void acceptInvitation(String rawToken, String newPassword) {
+        VerificationToken token = tokenService.consume(rawToken, VerificationTokenType.USER_INVITATION);
+        AppUser user = token.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        eventPublisher.publish(UserEnabledEvent.of(user.getId(), user.getEmail()));
+        auditService.record(ENTITY, user.getId().toString(), "INVITATION_ACCEPTED");
     }
 
     // ── internals ────────────────────────────────────────────────────────────
