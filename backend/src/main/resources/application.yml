@@ -70,6 +70,7 @@ auth:
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
     email-verification-path: ${EMAIL_VERIFICATION_PATH:/verify-email}
     password-reset-path: ${PASSWORD_RESET_PATH:/reset-password}
+    invitation-path: ${INVITATION_PATH:/accept-invitation}
     issuer: ${VERIFICATION_ISSUER:Placement Platform}
     cleanup:
       enabled: ${VERIFICATION_CLEANUP_ENABLED:true}
