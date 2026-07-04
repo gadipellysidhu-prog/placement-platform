@@ -32,6 +32,10 @@ public class AppUser {
     @Column(nullable = false, length = 50)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AccountStatus status = AccountStatus.ACTIVE;
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 

@@ -1,5 +1,6 @@
 package com.college.placement.auth;
 
+import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.dto.RegisterRequest;
@@ -151,14 +152,7 @@ class AuthValidationTest {
 
     @Test
     void refresh_validToken_rotatesAndReturnsNewTokens() throws Exception {
-        MvcResult registerResult = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest("refresh@test.com", "password123", Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        TokenResponse tokens = mapper.readValue(
-                registerResult.getResponse().getContentAsString(), TokenResponse.class);
+        TokenResponse tokens = verifiedTokens("refresh@test.com");
 
         mvc.perform(post("/auth/refresh")
                         .contentType(JSON)
@@ -170,14 +164,7 @@ class AuthValidationTest {
 
     @Test
     void refresh_usedToken_returns401() throws Exception {
-        MvcResult registerResult = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest("reuse@test.com", "password123", Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        TokenResponse tokens = mapper.readValue(
-                registerResult.getResponse().getContentAsString(), TokenResponse.class);
+        TokenResponse tokens = verifiedTokens("reuse@test.com");
 
         // Use the refresh token once
         mvc.perform(post("/auth/refresh")
@@ -197,14 +184,7 @@ class AuthValidationTest {
 
     @Test
     void logout_validToken_returns200AndRevokesToken() throws Exception {
-        MvcResult registerResult = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest("logout@test.com", "password123", Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        TokenResponse tokens = mapper.readValue(
-                registerResult.getResponse().getContentAsString(), TokenResponse.class);
+        TokenResponse tokens = verifiedTokens("logout@test.com");
 
         mvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer " + tokens.accessToken())
@@ -221,18 +201,29 @@ class AuthValidationTest {
 
     @Test
     void logout_unknownToken_returns200Silently() throws Exception {
-        MvcResult registerResult = mvc.perform(post("/auth/register")
-                        .contentType(JSON)
-                        .content(mapper.writeValueAsString(new RegisterRequest("logoutanon@test.com", "password123", Role.ROLE_STUDENT))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        TokenResponse tokens = mapper.readValue(
-                registerResult.getResponse().getContentAsString(), TokenResponse.class);
+        TokenResponse tokens = verifiedTokens("logoutanon@test.com");
 
         mvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer " + tokens.accessToken())
                         .contentType(JSON)
                         .content("{\"refreshToken\":\"unknown-token-that-does-not-exist\"}"))
                 .andExpect(status().isNoContent());
+    }
+
+    /** Registers, verifies (Phase C enforcement blocks unverified login), and returns tokens. */
+    private TokenResponse verifiedTokens(String email) throws Exception {
+        mvc.perform(post("/auth/register")
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new RegisterRequest(email, "password123", Role.ROLE_STUDENT))))
+                .andExpect(status().isCreated());
+        AppUser user = userRepository.findByEmail(email).orElseThrow();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        MvcResult loginResult = mvc.perform(post("/auth/login")
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new LoginRequest(email, "password123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return mapper.readValue(loginResult.getResponse().getContentAsString(), TokenResponse.class);
     }
 }

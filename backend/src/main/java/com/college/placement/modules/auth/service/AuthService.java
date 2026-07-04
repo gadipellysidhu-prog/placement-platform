@@ -65,8 +65,13 @@ public class AuthService {
         this.auditLogger          = auditLogger;
     }
 
+    /**
+     * Registers a new (unverified) student account. No JWT is issued — the account
+     * cannot sign in until its email is verified. A {@link UserRegisteredEvent} is
+     * published, which (after commit) triggers the verification email.
+     */
     @Transactional
-    public TokenResponse register(RegisterRequest request) {
+    public void register(RegisterRequest request) {
         Timer.Sample sample = authMetrics.startSample();
         try {
             if (request.role() != Role.ROLE_STUDENT) {
@@ -82,12 +87,11 @@ public class AuthService {
             user.setEmail(request.email());
             user.setPasswordHash(passwordEncoder.encode(request.password()));
             user.setRole(request.role());
+            user.setEmailVerified(false);
             userRepository.save(user);
 
-            TokenResponse tokens = issueTokens(user);
             eventPublisher.publish(UserRegisteredEvent.of(user.getId(), user.getEmail(), user.getRole().name()));
             authMetrics.recordRegisterSuccess();
-            return tokens;
         } finally {
             authMetrics.stopRegisterTimer(sample);
         }
@@ -111,6 +115,32 @@ public class AuthService {
             if (user.isAccountLocked()) {
                 authMetrics.recordLoginFailure();
                 throw AuthException.accountLocked();
+            }
+
+            // Enforce administrative account state (Phase D): disabled/locked/invited
+            // accounts cannot obtain a JWT. Checked after a correct password.
+            switch (user.getStatus()) {
+                case DISABLED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountDisabled();
+                }
+                case LOCKED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountLocked();
+                }
+                case INVITED -> {
+                    authMetrics.recordLoginFailure();
+                    throw AuthException.accountNotActivated();
+                }
+                case ACTIVE -> { /* proceed */ }
+            }
+
+            // Enforce email verification: credentials are valid but no JWT is issued
+            // until the account's email is verified. Checked only after a correct
+            // password so it is not an unauthenticated existence/verification oracle.
+            if (!user.isEmailVerified()) {
+                auditLogger.loginFailure(user.getEmail(), "", "email_not_verified");
+                throw AuthException.emailNotVerified();
             }
 
             resetLoginFailures(user);

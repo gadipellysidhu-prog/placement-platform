@@ -24,27 +24,13 @@ Unless explicitly requested:
 
 ## Current Project Status
 
-### Completed
+**Version 1.0 — backend feature-complete.** All bounded contexts are implemented,
+tested (345 tests), and gated by CI. The only deferred module is `policy` (an
+intentional placeholder). See the reconciled **Phase Status** table near the end
+of this file, plus `CHANGELOG.md` and `RELEASE_NOTES_v1.0.0.md`.
 
-- Phase 1: Authentication
-- JWT RS256 Authentication
-- Refresh Token Rotation
-- BCrypt Password Hashing
-- Role-Based Access Control
-- Security Filter Chain
-- Flyway Authentication Migration
-- Integration Tests
-- Docker Development Environment
-
-### Current Phase
-
-**Phase 2: Core Domain Foundation**
-
-Current implementation target: Student, Company, Recruiter, Branch, Skill
-
-### Future Phases
-
-Core Placement Domain · Business Services · REST APIs · Internal Event Bus · Transactional Outbox · File Pipeline · AI Governance · Observability · Security Hardening · Testing Expansion · CI/CD · Docker Production · Production Deployment
+Post-1.0 work is scoped per-change: branch from `main`, keep one concern per PR,
+add a Flyway migration for any schema change, and keep the quality gates green.
 
 ---
 
@@ -69,7 +55,7 @@ For every implementation phase:
 
 ## Project
 
-**Placement Intelligence & Skill Verification Platform** — a Spring Boot 3.3.5 / Java 17 modular monolith.
+**Placement Intelligence & Skill Verification Platform** — a Spring Boot 3.5.16 / Java 17 modular monolith.
 
 Working directory for all backend work: `backend/`
 
@@ -136,23 +122,30 @@ com.college.placement
 │   │   ├── dto/
 │   │   ├── repository/
 │   │   └── service/        AuthService
-│   ├── aigovernance/                 ← placeholder (package-info only)
-│   ├── analytics/                    ← placeholder
-│   ├── certificate/                  ← placeholder
-│   ├── company/                      ← placeholder
-│   ├── eligibility/                  ← placeholder
-│   ├── notification/                 ← placeholder
-│   ├── placement/                    ← placeholder
-│   ├── policy/                       ← placeholder
-│   └── student/                      ← placeholder
+│   ├── auth/ + admin        ← COMPLETE + IAM: AdminUserController, UserAdminService,
+│   │                          AccountStatus, invitations, role management
+│   ├── aigovernance/                 ← AIModel, PromptRegistry, InferenceHistory (+ service)
+│   ├── analytics/                    ← COMPLETE: read-model reporting (/api/analytics/**)
+│   ├── certificate/                  ← COMPLETE: certificate verification + events
+│   ├── company/                      ← COMPLETE: companies + job postings
+│   ├── dashboard/                    ← COMPLETE: aggregate summary endpoint
+│   ├── eligibility/                  ← domain rules service (EligibilityService)
+│   ├── notification/                 ← COMPLETE: channels + history
+│   ├── placement/                    ← COMPLETE: applications, offers, status history
+│   ├── policy/                       ← placeholder (package-info only)
+│   └── student/                      ← COMPLETE: students, branches, skills
 └── shared/                           ← cross-cutting infrastructure
-    ├── audit/                        ← placeholder
-    ├── eventbus/                     ← placeholder
+    ├── academic/                     ← COMPLETE: academic years
+    ├── audit/                        ← COMPLETE: audit log + service
+    ├── eventbus/                     ← COMPLETE: in-process domain event bus
     ├── exception/      GlobalExceptionHandler, AuthException
-    ├── filepipeline/                 ← placeholder
-    ├── observability/                ← placeholder
-    ├── outbox/                       ← placeholder
-    ├── ratelimit/      RateLimitConfig (Bucket4j placeholder)
+    ├── filepipeline/                 ← COMPLETE: upload/scan/storage pipeline
+    ├── notification/                 ← COMPLETE: email provider
+    ├── observability/                ← COMPLETE: health, metrics, tracing, web
+    ├── outbox/                       ← COMPLETE: transactional outbox + dispatcher
+    ├── ratelimit/      RateLimitConfig (Bucket4j)
+    ├── settings/                     ← COMPLETE: app settings
+    ├── storage/                      ← COMPLETE: storage abstraction (S3/local)
     └── security/       SecurityConfig, JwtService, JwtAuthenticationFilter,
                         CustomUserDetailsService, SecurityProblemHandler,
                         CorsConfig, JwtProperties
@@ -167,7 +160,8 @@ Each `modules/<name>/` sub-package follows a strict layered structure:
 - **Filter**: `JwtAuthenticationFilter` (OncePerRequestFilter). Never propagates exceptions; clears context on failure.
 - **Role hierarchy**: `ROLE_ADMIN > ROLE_PLACEMENT_OFFICER > ROLE_STUDENT`. Wired into `MethodSecurityExpressionHandler` for `@PreAuthorize`.
 - **Error format**: all security exceptions → RFC 7807 `ProblemDetail` JSON (`application/problem+json`) via `SecurityProblemHandler` (filter-level) and `GlobalExceptionHandler` (MVC-level).
-- **Public paths**: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/verify-email`, `/auth/forgot-password`, `/actuator/health`.
+- **Public paths**: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/accept-invitation`, `/actuator/health`, `/swagger-ui/**`.
+- **IAM / admin**: `/api/admin/users/**` requires `ROLE_ADMIN` (`@PreAuthorize`); administrative `AccountStatus` (`ACTIVE`/`DISABLED`/`LOCKED`/`INVITED`) gates login.
 
 ### Persistence
 
@@ -233,21 +227,41 @@ Each `modules/<name>/` sub-package follows a strict layered structure:
 
 ## Phase Status
 
+> Reconciled against the repository on 2026-07-03. The original 1–14 plan is
+> complete; the platform advanced well beyond it (event bus, outbox, file
+> pipeline, observability, notifications, audit, certificates, settings,
+> academic years, IAM/admin). Status below reflects actual code, not the
+> original plan.
+
 | Phase | Status |
 |---|---|
-| 1 — Authentication | ✅ Complete |
-| 2 — Core Domain entities | ✅ Complete |
-| 3 — Repositories | 🔲 **Current** |
-| 4 — Business Services | 🔲 |
-| 5 — Internal Event Bus | 🔲 |
-| 6 — Transactional Outbox | 🔲 |
-| 7 — REST APIs | 🔲 |
-| 8 — File Pipeline | 🔲 |
-| 9 — Observability | 🔲 |
-| 10 — Security Hardening | 🔲 |
-| 11 — Testing | 🔲 |
-| 12 — CI/CD | 🔲 |
-| 13 — Docker Production | 🔲 |
-| 14 — Production Readiness | 🔲 |
+| 1 — Authentication (JWT RS256, RBAC, refresh rotation) | ✅ Complete |
+| 2 — Core Domain entities (Student, Company, Recruiter, Branch, Skill) | ✅ Complete |
+| 3 — Repositories | ✅ Complete |
+| 4 — Business Services | ✅ Complete |
+| 5 — Internal Event Bus (`shared/eventbus`) | ✅ Complete |
+| 6 — Transactional Outbox (`shared/outbox`) | ✅ Complete |
+| 7 — REST APIs (student, company, placement, certificate, dashboard, …) | ✅ Complete |
+| 8 — File Pipeline (`shared/filepipeline`, storage, ClamAV scan) | ✅ Complete |
+| 9 — Observability (`shared/observability`: health, metrics, tracing) | ✅ Complete |
+| 10 — Security Hardening (email verification, brute-force lockout, RFC 7807) | ✅ Complete |
+| 11 — Testing (integration + repository + security suites) | ✅ Complete |
+| 12 — CI/CD (ci.yml 9-stage, CodeQL, OWASP dependency-check) | ✅ Complete |
+| 13 — Docker Production (Dockerfile, prod profile, Trivy scan) | ✅ Complete |
+| 14 — Production Readiness (see `PRODUCTION_READINESS_REPORT.md`) | ✅ Complete |
+| A–C — Auth increments (email verification/enforcement) | ✅ Complete |
+| D — IAM / Admin (user admin, roles, invitations, account lifecycle) | ✅ Complete |
+| E — Analytics & Reporting (`modules/analytics`) | ✅ Complete |
+| Policy module | 🔲 Placeholder (not yet required) |
 
-**Implement ONE phase at a time. Stop and wait for explicit approval before proceeding.**
+### Analytics & Reporting (Phase E — complete)
+
+Read model over the operational tables; persists nothing. `AnalyticsRepository`
+runs JPA aggregation (no entity hydration); `AnalyticsService` derives KPIs;
+`AnalyticsController` exposes `/api/analytics/**`, restricted to
+`ROLE_PLACEMENT_OFFICER` (and `ROLE_ADMIN` via the hierarchy). Endpoints:
+`report`, `overview`, `funnel`, `by-branch`, `top-recruiters`, `ctc`, `trend`.
+Mirrors the cross-module read pattern established by `DashboardController`.
+
+**Next candidate work:** the `policy` module remains a package-info placeholder;
+implement it only when a concrete policy/rules requirement is defined.
