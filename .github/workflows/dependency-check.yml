@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Single source of truth for the plugin version, reused below in the cache
+  # key and the goal invocation so a version bump always busts the NVD cache.
+  DC_VERSION: 12.2.2
+
 jobs:
   owasp-dependency-check:
     name: OWASP Dependency Check
@@ -33,14 +38,19 @@ jobs:
       # captures the DB the Maven plugin actually uses — its default lives inside
       # the local Maven repo, which is why the old ~/.dependency-check/data cache
       # never hit. The run_id key always writes a fresh entry; restore-keys pulls
-      # the newest prior cache so the DB carries forward run-to-run.
+      # the newest prior cache so the DB carries forward run-to-run. The key is
+      # scoped by DC_VERSION because the plugin's H2 schema is not always
+      # forward/backward compatible across versions (e.g. 10.0.4 -> 12.2.2 hit
+      # "Incompatible or corrupt database found", which failOnError=false
+      # swallowed as a silent false-green instead of a build failure) — scoping
+      # the key means a plugin version bump always starts from a clean DB.
       - name: Cache NVD database
         uses: actions/cache@v4
         with:
           path: ~/.dependency-check/data
-          key: owasp-nvd-${{ runner.os }}-${{ github.run_id }}
+          key: owasp-nvd-${{ runner.os }}-${{ env.DC_VERSION }}-${{ github.run_id }}
           restore-keys: |
-            owasp-nvd-${{ runner.os }}-
+            owasp-nvd-${{ runner.os }}-${{ env.DC_VERSION }}-
 
       - name: OWASP Dependency Check
         working-directory: backend
@@ -53,7 +63,7 @@ jobs:
           mkdir -p "$DATA_DIR"
 
           ARGS=(
-            org.owasp:dependency-check-maven:12.2.2:check
+            org.owasp:dependency-check-maven:${{ env.DC_VERSION }}:check
             -DfailBuildOnCVSS=7          # fail on HIGH+CRITICAL (real vulnerabilities)
             -Dformat=HTML,XML
             -DskipTestScope=true
