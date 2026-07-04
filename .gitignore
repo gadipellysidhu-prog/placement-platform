@@ -9,6 +9,7 @@ frontend/node_modules/
 # Secrets / local config — NEVER commit real credentials
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 private.pem
