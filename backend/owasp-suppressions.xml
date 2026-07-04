@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+      This file suppresses ONLY verified CPE-mismatch false positives, each scoped to
+      a single artifact + the specific wrongly-assigned CPE. The failBuildOnCVSS=7 gate
+      remains fully active for every real vulnerability. No genuine vulnerabilities are
+      suppressed here.
+    -->
+
+    <!--
+      log4j-api is the API-only module (pulled transitively via log4j-to-slf4j, which
+      routes Log4j2 API calls to SLF4J/Logback). log4j-core is NOT on the classpath, so
+      the Apache Log4j CVEs (CVE-2026-34477..34481, CVE-2025-68161) — which require
+      log4j-core's config/appender/lookup code — are not applicable. Dependency-Check's
+      well-known api-vs-core CPE mismatch.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            log4j-api only; log4j-core absent (Logback is the active backend).
+            Apache Log4j CVEs require log4j-core and do not apply to the API module.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.logging\.log4j/log4j-api@.*$</packageUrl>
+        <cpe>cpe:/a:apache:log4j</cpe>
+    </suppress>
+
+    <!--
+      micrometer-registry-prometheus is the Java Micrometer metrics client library. It is
+      wrongly matched to cpe:/a:prometheus:prometheus (the Prometheus SERVER / monitoring
+      system). CVE-2026-42154 targets the Prometheus product, not the Java client library.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Micrometer Prometheus registry (Java metrics client) wrongly matched to the
+            Prometheus server CPE. CVE targets the Prometheus product, not this library.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.micrometer/micrometer-registry-prometheus@.*$</packageUrl>
+        <cpe>cpe:/a:prometheus:prometheus</cpe>
+    </suppress>
+
+    <!--
+      angus-activation is the Eclipse Angus implementation of Jakarta Activation. It is
+      wrongly matched to cpe:/a:eclipse:angus_mail (Angus Mail, a different artifact —
+      present here as org.eclipse.angus:jakarta.mail:2.0.5). The activation library is not
+      the mail provider the CVE (CVE-2025-7962) describes.
+    -->
+    <suppress>
+        <notes><![CDATA[
+            Angus Activation (Jakarta Activation impl) wrongly matched to the angus_mail CPE.
+            Distinct artifact from Angus Mail; the CVE does not apply to the activation lib.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.eclipse\.angus/angus-activation@.*$</packageUrl>
+        <cpe>cpe:/a:eclipse:angus_mail</cpe>
+    </suppress>
+
+</suppressions>
