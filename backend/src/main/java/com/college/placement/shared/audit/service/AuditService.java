@@ -4,12 +4,15 @@ import com.college.placement.shared.audit.AuditContext;
 import com.college.placement.shared.audit.domain.AuditLog;
 import com.college.placement.shared.audit.repository.AuditLogRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -72,6 +75,24 @@ public class AuditService {
     /** Convenience overload for entities keyed by {@link UUID}. */
     public void record(String entityType, UUID entityId, String action) {
         record(entityType, entityId == null ? "unknown" : entityId.toString(), action);
+    }
+
+    // ── Read side (admin audit-trail listing) ────────────────────────────────
+
+    /**
+     * Paginated, filterable read of the audit trail for administrators. Blank filters are
+     * normalised to {@code null} (treated as "no filter"); the date range is inclusive.
+     */
+    @Transactional(readOnly = true)
+    public Page<AuditLog> search(String entityType, String entityId, String action,
+                                 String performedBy, Instant dateFrom, Instant dateTo, Pageable pageable) {
+        return auditLogRepository.search(
+                blankToNull(entityType), blankToNull(entityId), blankToNull(action),
+                blankToNull(performedBy), dateFrom, dateTo, pageable);
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private String currentActor() {
