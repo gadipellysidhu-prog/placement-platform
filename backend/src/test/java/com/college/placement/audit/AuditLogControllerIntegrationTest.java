@@ -6,6 +6,12 @@ import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.modules.certificate.repository.CertificateRepository;
+import com.college.placement.modules.company.repository.CompanyRepository;
+import com.college.placement.modules.company.repository.JobPostingRepository;
+import com.college.placement.modules.placement.repository.JobApplicationRepository;
+import com.college.placement.modules.placement.repository.OfferRepository;
+import com.college.placement.modules.student.repository.StudentRepository;
 import com.college.placement.shared.audit.domain.AuditLog;
 import com.college.placement.shared.audit.repository.AuditLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,10 +49,26 @@ class AuditLogControllerIntegrationTest {
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
     @Autowired AuditLogRepository auditLogRepo;
+    @Autowired OfferRepository offerRepo;
+    @Autowired JobApplicationRepository applicationRepo;
+    @Autowired CertificateRepository certRepo;
+    @Autowired StudentRepository studentRepo;
+    @Autowired JobPostingRepository jobPostingRepo;
+    @Autowired CompanyRepository companyRepo;
     @Autowired PasswordEncoder passwordEncoder;
 
+    // The H2 schema is reused across test classes, so a prior suite can leave rows that
+    // FK-reference app_users (students, applications, …). Wipe the full dependency chain
+    // before deleting users — mirrors CompanyControllerIntegrationTest — otherwise
+    // userRepo.deleteAll() FK-violates under CI's class execution order.
     @BeforeEach
     void clean() {
+        offerRepo.deleteAll();
+        applicationRepo.deleteAll();
+        certRepo.deleteAll();
+        studentRepo.deleteAll();
+        jobPostingRepo.deleteAll();
+        companyRepo.deleteAll();
         auditLogRepo.deleteAll();
         refreshTokenRepo.deleteAll();
         userRepo.deleteAll();
