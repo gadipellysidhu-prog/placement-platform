@@ -189,6 +189,27 @@ class AuditLogControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
 
+    @Test
+    void list_malformedDate_returns400() throws Exception {
+        String admin = adminToken("admin@audit.test");
+        mvc.perform(get("/api/admin/audit-logs?dateFrom=not-a-date").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void list_explicitSortByAction_ordersDeterministically() throws Exception {
+        String admin = adminToken("admin@audit.test");
+        saveLog("AppUser", "u2", "ACTION_B", "admin@x.test");
+        saveLog("AppUser", "u3", "ACTION_C", "admin@x.test");
+        saveLog("AppUser", "u1", "ACTION_A", "admin@x.test");
+
+        mvc.perform(get("/api/admin/audit-logs?sort=action,asc").header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].action").value("ACTION_A"))
+                .andExpect(jsonPath("$.content[1].action").value("ACTION_B"))
+                .andExpect(jsonPath("$.content[2].action").value("ACTION_C"));
+    }
+
     // ── DTO projection / no entity leakage ───────────────────────────────────
 
     @Test

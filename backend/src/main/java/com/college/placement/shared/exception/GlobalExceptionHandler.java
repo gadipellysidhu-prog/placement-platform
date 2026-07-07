@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -55,6 +56,15 @@ public class GlobalExceptionHandler {
         problem.setType(URI.create("urn:placement:bad-request"));
         problem.setTitle("Missing Request Parameter");
         problem.setDetail("Required parameter '" + ex.getParameterName() + "' is missing.");
+        return ResponseEntity.badRequest().body(problem);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("urn:placement:bad-request"));
+        problem.setTitle("Invalid Request Parameter");
+        problem.setDetail("Parameter '" + ex.getName() + "' has an invalid value.");
         return ResponseEntity.badRequest().body(problem);
     }
 
