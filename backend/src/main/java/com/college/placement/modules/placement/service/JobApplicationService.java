@@ -3,6 +3,8 @@ package com.college.placement.modules.placement.service;
 import com.college.placement.modules.company.domain.JobPosting;
 import com.college.placement.modules.company.domain.JobPostingStatus;
 import com.college.placement.modules.company.service.JobPostingService;
+import com.college.placement.modules.eligibility.EligibilityResult;
+import com.college.placement.modules.eligibility.EligibilityService;
 import com.college.placement.modules.placement.domain.ApplicationStatus;
 import com.college.placement.modules.placement.domain.JobApplication;
 import com.college.placement.modules.placement.event.ApplicationStatusChangedEvent;
@@ -29,15 +31,18 @@ public class JobApplicationService {
     private final JobApplicationRepository jobApplicationRepository;
     private final StudentService studentService;
     private final JobPostingService jobPostingService;
+    private final EligibilityService eligibilityService;
     private final EventPublisher eventPublisher;
 
     public JobApplicationService(JobApplicationRepository jobApplicationRepository,
                                  StudentService studentService,
                                  JobPostingService jobPostingService,
+                                 EligibilityService eligibilityService,
                                  EventPublisher eventPublisher) {
         this.jobApplicationRepository = jobApplicationRepository;
         this.studentService = studentService;
         this.jobPostingService = jobPostingService;
+        this.eligibilityService = eligibilityService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -57,6 +62,11 @@ public class JobApplicationService {
         }
         if (jobApplicationRepository.existsByStudentAndJobPosting(student, posting)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Student has already applied to this job posting");
+        }
+
+        EligibilityResult eligibility = eligibilityService.check(student, posting);
+        if (!eligibility.eligible()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, String.join(" ", eligibility.reasons()));
         }
 
         JobApplication application = new JobApplication();
