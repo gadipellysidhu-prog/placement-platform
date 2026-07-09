@@ -83,4 +83,14 @@ export default [
       'no-undef': 'off',
     },
   },
+
+  // ── Test files & shared test infrastructure ───────────────────────────────
+  // Test modules intentionally export helpers/fixtures alongside components
+  // (e.g. renderWithProviders), which the Fast-Refresh rule flags — disable it here.
+  {
+    files: ['src/**/*.{test,spec}.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ]
