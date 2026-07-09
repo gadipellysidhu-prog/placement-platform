@@ -189,9 +189,13 @@ Operational references:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `ci.yml` | Every push / PR | 9-stage: compile → test → package → Flyway validate → code quality → secrets scan → Docker build+health → container scan (Trivy) → release readiness |
+| `ci.yml` | Every push / PR | Backend: compile → test → package → Flyway validate → code quality → secrets scan → Docker build+health → container scan (Trivy). Frontend (independent stage): `npm ci` → lint → format check → typecheck → Vitest → build. Both feed the release-readiness summary. |
 | `codeql.yml` | Push to `main`, PRs, weekly | CodeQL SAST (Java + Actions) |
 | `dependency-check.yml` | Push to `main`, weekly | OWASP NVD CVE scan (fails on CVSS ≥ 7) |
+
+The backend and frontend stages are fully independent — neither blocks the other,
+but a failure in either fails the PR. See [`frontend/README.md`](frontend/README.md)
+for the frontend testing philosophy, MSW usage, and `renderWithProviders`.
 
 Add an `NVD_API_KEY` repository secret (free at nvd.nist.gov) to speed up the OWASP scan.
 
