@@ -22,6 +22,9 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'))
+const VerifyEmailPage = lazy(() => import('@/features/auth/pages/VerifyEmailPage'))
+const AcceptInvitationPage = lazy(() => import('@/features/auth/pages/AcceptInvitationPage'))
 
 // Student feature pages
 const StudentProfilePage = lazy(() => import('@/features/students/pages/StudentProfilePage'))
@@ -47,6 +50,16 @@ function AppRoutes(): React.ReactElement {
             <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
             <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
           </Route>
+        </Route>
+
+        {/* Token-driven auth journeys — reachable by anyone with the email link,
+            including a signed-in administrator testing an invitation. Deliberately
+            NOT behind PublicRoute (which would bounce authenticated users to the
+            dashboard before the token is consumed). */}
+        <Route element={<AuthLayout />}>
+          <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
+          <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
+          <Route path={ROUTES.ACCEPT_INVITATION} element={<AcceptInvitationPage />} />
         </Route>
 
         {/* Protected routes */}
