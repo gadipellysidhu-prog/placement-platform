@@ -8,6 +8,13 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
 
+  // Auth journeys — paths MUST match the SPA URLs the backend embeds in emails
+  // (auth.verification.* in application.yml: /verify-email, /reset-password,
+  // /accept-invitation, each carrying a `?token=` query parameter).
+  VERIFY_EMAIL: '/verify-email',
+  RESET_PASSWORD: '/reset-password',
+  ACCEPT_INVITATION: '/accept-invitation',
+
   // Root
   DASHBOARD: '/dashboard',
 
