@@ -13,6 +13,8 @@ export interface TagOption {
 interface TagSectionProps {
   /** Human label for a single item, e.g. "skill" or "branch" — used in placeholder/empty copy. */
   noun: string
+  /** Plural label, e.g. "skills" or "branches". Defaults to `${noun}s`. */
+  nounPlural?: string
   /** Currently attached items. */
   items: TagOption[]
   /** All selectable options (already-attached ones are filtered out). */
@@ -32,6 +34,7 @@ interface TagSectionProps {
  */
 export function TagSection({
   noun,
+  nounPlural,
   items,
   options,
   optionsLoading,
@@ -41,6 +44,7 @@ export function TagSection({
   onRemove,
 }: TagSectionProps) {
   const [selected, setSelected] = useState<string>('')
+  const plural = nounPlural ?? `${noun}s`
 
   const attachedIds = new Set(items.map((i) => i.id))
   const available = options.filter((o) => !attachedIds.has(o.id))
@@ -76,18 +80,18 @@ export function TagSection({
           })}
         </ul>
       ) : (
-        <p className="text-sm text-muted-foreground">No {noun}s added yet.</p>
+        <p className="text-sm text-muted-foreground">No {plural} added yet.</p>
       )}
 
       <div className="flex items-center gap-2">
-        <Select value={selected || undefined} onValueChange={setSelected} disabled={optionsLoading}>
+        <Select value={selected} onValueChange={setSelected} disabled={optionsLoading}>
           <SelectTrigger className="w-56" aria-label={`Select a ${noun} to add`}>
             <SelectValue
               placeholder={
                 optionsLoading
                   ? 'Loading…'
                   : available.length === 0
-                    ? `All ${noun}s added`
+                    ? `All ${plural} added`
                     : `Add a ${noun}…`
               }
             />
