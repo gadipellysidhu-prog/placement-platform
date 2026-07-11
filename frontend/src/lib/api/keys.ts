@@ -24,6 +24,7 @@ export const queryKeys = {
   jobPostings: {
     all: () => ['job-postings'] as const,
     list: (params?: Record<string, unknown>) => ['job-postings', 'list', params] as const,
+    manage: (params?: Record<string, unknown>) => ['job-postings', 'manage', params] as const,
     detail: (id: string) => ['job-postings', id] as const,
   },
 
