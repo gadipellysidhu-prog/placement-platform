@@ -1,7 +1,10 @@
 package com.college.placement.modules.student.controller;
 
+import com.college.placement.modules.student.dto.SkillAliasRequest;
+import com.college.placement.modules.student.dto.SkillAliasResponse;
 import com.college.placement.modules.student.dto.SkillCreateRequest;
 import com.college.placement.modules.student.dto.SkillResponse;
+import com.college.placement.modules.student.dto.SkillSearchResult;
 import com.college.placement.modules.student.dto.SkillUpdateRequest;
 import com.college.placement.modules.student.service.SkillService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,11 +54,23 @@ public class SkillController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Intelligent catalog search (names, aliases, abbreviations, fuzzy), ranked")
+    public ResponseEntity<List<SkillSearchResult>> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "20") int limit) {
+        int capped = Math.max(1, Math.min(limit, 50));
+        return ResponseEntity.ok(
+                skillService.search(q, capped).stream().map(SkillSearchResult::from).toList());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get skill by ID")
+    @Operation(summary = "Get skill by ID (with aliases)")
     public ResponseEntity<SkillResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(SkillResponse.from(skillService.getById(id)));
+        return ResponseEntity.ok(SkillResponse.fromDetailed(
+                skillService.getById(id), skillService.getAliases(id)));
     }
 
     @PutMapping("/{id}")
@@ -72,5 +87,30 @@ public class SkillController {
     @Operation(summary = "Verify a skill")
     public ResponseEntity<SkillResponse> verify(@PathVariable UUID id) {
         return ResponseEntity.ok(SkillResponse.from(skillService.verify(id)));
+    }
+
+    @GetMapping("/{id}/aliases")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "List aliases of a skill")
+    public ResponseEntity<List<SkillAliasResponse>> listAliases(@PathVariable UUID id) {
+        return ResponseEntity.ok(
+                skillService.getAliases(id).stream().map(SkillAliasResponse::from).toList());
+    }
+
+    @PostMapping("/{id}/aliases")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Add an alias to a skill")
+    public ResponseEntity<SkillAliasResponse> addAlias(@PathVariable UUID id,
+                                                       @Valid @RequestBody SkillAliasRequest req) {
+        var alias = skillService.addAlias(id, req.alias());
+        return ResponseEntity.status(HttpStatus.CREATED).body(SkillAliasResponse.from(alias));
+    }
+
+    @DeleteMapping("/{id}/aliases/{aliasId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Remove an alias from a skill")
+    public ResponseEntity<Void> removeAlias(@PathVariable UUID id, @PathVariable UUID aliasId) {
+        skillService.removeAlias(id, aliasId);
+        return ResponseEntity.noContent().build();
     }
 }
