@@ -221,6 +221,7 @@ export default function JobPostingDetailPage() {
               {isOfficer ? (
                 <TagSection
                   noun="branch"
+                  nounPlural="branches"
                   items={branches}
                   options={branchesQuery.data ?? []}
                   optionsLoading={branchesQuery.isLoading}
