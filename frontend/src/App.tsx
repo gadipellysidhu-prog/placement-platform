@@ -6,6 +6,8 @@ import { NotificationProvider } from '@/providers/NotificationProvider'
 import { SessionProvider } from '@/features/auth/SessionProvider'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { PublicRoute } from '@/routes/PublicRoute'
+import { RoleRoute } from '@/routes/RoleRoute'
+import { ROLES } from '@/constants/roles'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { ErrorBoundary } from '@/shared/ui/error-boundary'
@@ -35,6 +37,19 @@ const StudentDetailPage = lazy(() => import('@/features/students/pages/StudentDe
 const CompaniesListPage = lazy(() => import('@/features/companies/pages/CompaniesListPage'))
 const CompanyDetailPage = lazy(() => import('@/features/companies/pages/CompanyDetailPage'))
 const CreateCompanyPage = lazy(() => import('@/features/companies/pages/CreateCompanyPage'))
+
+// Job posting feature pages
+const JobPostingsListPage = lazy(() => import('@/features/job-postings/pages/JobPostingsListPage'))
+const JobPostingDetailPage = lazy(
+  () => import('@/features/job-postings/pages/JobPostingDetailPage'),
+)
+const ManageJobPostingsPage = lazy(
+  () => import('@/features/job-postings/pages/ManageJobPostingsPage'),
+)
+const CreateJobPostingPage = lazy(
+  () => import('@/features/job-postings/pages/CreateJobPostingPage'),
+)
+const EditJobPostingPage = lazy(() => import('@/features/job-postings/pages/EditJobPostingPage'))
 
 function AppRoutes(): React.ReactElement {
   return (
@@ -79,6 +94,25 @@ function AppRoutes(): React.ReactElement {
             <Route path={ROUTES.OFFICER.COMPANIES} element={<CompaniesListPage />} />
             <Route path={ROUTES.OFFICER.CREATE_COMPANY} element={<CreateCompanyPage />} />
             <Route path={`${ROUTES.OFFICER.COMPANIES}/:id`} element={<CompanyDetailPage />} />
+
+            {/* Job postings — student browse + shared detail (open to all authenticated
+                roles; the backend's role hierarchy lets officers read these too). */}
+            <Route path={ROUTES.STUDENT.JOB_POSTINGS} element={<JobPostingsListPage />} />
+            <Route path={`${ROUTES.STUDENT.JOB_POSTINGS}/:id`} element={<JobPostingDetailPage />} />
+
+            {/* Job postings — officer/admin management (create, edit, lifecycle, tagging). */}
+            <Route element={<RoleRoute minimumRole={ROLES.PLACEMENT_OFFICER} />}>
+              <Route path={ROUTES.OFFICER.JOB_POSTINGS} element={<ManageJobPostingsPage />} />
+              <Route path={ROUTES.OFFICER.CREATE_JOB_POSTING} element={<CreateJobPostingPage />} />
+              <Route
+                path={`${ROUTES.OFFICER.JOB_POSTINGS}/:id/edit`}
+                element={<EditJobPostingPage />}
+              />
+              <Route
+                path={`${ROUTES.OFFICER.JOB_POSTINGS}/:id`}
+                element={<JobPostingDetailPage />}
+              />
+            </Route>
           </Route>
         </Route>
 

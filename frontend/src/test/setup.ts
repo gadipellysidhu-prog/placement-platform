@@ -21,6 +21,18 @@ if (typeof window.matchMedia !== 'function') {
   })
 }
 
+// jsdom lacks the pointer-capture and scroll APIs that Radix primitives (Select,
+// Dropdown, etc.) call on interaction. Stub them so component tests can drive those
+// controls without throwing.
+if (typeof window.HTMLElement.prototype.hasPointerCapture !== 'function') {
+  window.HTMLElement.prototype.hasPointerCapture = () => false
+  window.HTMLElement.prototype.setPointerCapture = () => {}
+  window.HTMLElement.prototype.releasePointerCapture = () => {}
+}
+if (typeof window.HTMLElement.prototype.scrollIntoView !== 'function') {
+  window.HTMLElement.prototype.scrollIntoView = () => {}
+}
+
 // Start MSW before the suite; fail loudly on any request without a handler.
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 
