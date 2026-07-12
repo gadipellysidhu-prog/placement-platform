@@ -1,6 +1,19 @@
 import { apiClient } from '@/lib/axios'
 import type { Page, PageParams } from '@/types'
 
+/**
+ * Mirrors the backend `ApplicationStatus` enum exactly
+ * (com.college.placement.modules.placement.domain.ApplicationStatus),
+ * including the terminal WITHDRAWN state.
+ */
+export type ApplicationStatus =
+  | 'APPLIED'
+  | 'SHORTLISTED'
+  | 'INTERVIEWED'
+  | 'OFFERED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+
 export interface JobApplicationResponse {
   id: string
   studentId: string
@@ -9,7 +22,7 @@ export interface JobApplicationResponse {
   jobPostingTitle: string
   companyId: string
   companyName: string
-  status: 'APPLIED' | 'SHORTLISTED' | 'INTERVIEWED' | 'OFFERED' | 'REJECTED' | 'WITHDRAWN'
+  status: ApplicationStatus
   appliedAt: string
   createdAt: string
   updatedAt: string

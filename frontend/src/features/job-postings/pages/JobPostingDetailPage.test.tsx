@@ -73,6 +73,26 @@ function stubDetail(posting: JobPostingResponse) {
         },
       ]),
     ),
+    // The student-only ApplyPanel resolves the current student and their existing
+    // applications to decide whether Apply is enabled.
+    http.get(`${API_BASE_URL}/api/students/me`, () =>
+      HttpResponse.json({
+        id: 'stu-1',
+        userId: 'u-1',
+        userEmail: 's@u.edu',
+        rollNumber: 'CS-001',
+        branchId: 'b1',
+        branchName: 'CSE',
+        cgpa: 8.5,
+        currentYear: 4,
+        placementEligible: true,
+        status: 'ACTIVE',
+        skillNames: [],
+        createdAt: '',
+        updatedAt: '',
+      }),
+    ),
+    http.get(`${API_BASE_URL}/api/applications/my`, () => HttpResponse.json([])),
   )
 }
 
@@ -104,7 +124,7 @@ beforeEach(() => {
 })
 
 describe('JobPostingDetailPage — student', () => {
-  it('shows posting details and read-only skills/branches with a disabled Apply placeholder', async () => {
+  it('shows posting details and read-only skills/branches with a live Apply button', async () => {
     asStudent()
     stubDetail(detail({ status: 'OPEN' }))
 
@@ -114,8 +134,8 @@ describe('JobPostingDetailPage — student', () => {
     expect(screen.getByText('Java')).toBeInTheDocument()
     expect(screen.getByText('CSE')).toBeInTheDocument()
 
-    const applyButton = screen.getByRole('button', { name: /apply now/i })
-    expect(applyButton).toBeDisabled()
+    // Posting is OPEN and the student hasn't applied → Apply is enabled.
+    await waitFor(() => expect(screen.getByRole('button', { name: /apply now/i })).toBeEnabled())
 
     // Students never see officer lifecycle or tagging controls.
     expect(screen.queryByRole('button', { name: /open for applications/i })).not.toBeInTheDocument()
