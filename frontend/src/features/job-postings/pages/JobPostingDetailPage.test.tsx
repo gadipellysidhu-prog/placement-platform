@@ -33,11 +33,22 @@ function detail(overrides: Partial<JobPostingResponse> = {}): JobPostingResponse
 function stubDetail(posting: JobPostingResponse) {
   server.use(
     http.get(`${API_BASE_URL}/api/job-postings/${POSTING_ID}`, () => HttpResponse.json(posting)),
-    // Lookups used by the officer tagging UI.
-    http.get(`${API_BASE_URL}/api/skills`, () =>
+    // Officer detail mounts the AI panel — no analysis exists for these fixtures.
+    http.get(`${API_BASE_URL}/api/job-intelligence/postings/${POSTING_ID}/latest`, () =>
+      HttpResponse.json({ title: 'Not Found', status: 404 }, { status: 404 }),
+    ),
+    // Skill search backs the officer skill picker.
+    http.get(`${API_BASE_URL}/api/skills/search`, () =>
       HttpResponse.json([
-        { id: 's1', name: 'Java', category: null, verified: true, createdAt: '', updatedAt: '' },
-        { id: 's2', name: 'Go', category: null, verified: true, createdAt: '', updatedAt: '' },
+        {
+          id: 's2',
+          name: 'Go',
+          category: 'Programming Languages',
+          parentCategory: 'Software',
+          popularityScore: 80,
+          matchType: 'EXACT',
+          score: 1,
+        },
       ]),
     ),
     http.get(`${API_BASE_URL}/api/branches`, () =>
@@ -172,11 +183,9 @@ describe('JobPostingDetailPage — officer', () => {
 
     const { user } = renderDetail(officerRoute)
 
-    // Pick a skill from the "Add a skill" picker, then click its Add button.
-    await user.click(await screen.findByRole('combobox', { name: /select a skill to add/i }))
-    await user.click(await screen.findByRole('option', { name: 'Go' }))
-    const addButtons = screen.getAllByRole('button', { name: /^add$/i })
-    await user.click(addButtons[0])
+    // Search for the skill in the intelligent picker, then click the result.
+    await user.type(await screen.findByRole('combobox', { name: /search skills/i }), 'go')
+    await user.click(await screen.findByRole('option', { name: /go/i }))
 
     await waitFor(() => expect(taggedSkillId).toBe('s2'))
     expect(await screen.findByText('Go')).toBeInTheDocument()

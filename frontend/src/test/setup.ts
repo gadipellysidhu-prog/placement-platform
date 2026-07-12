@@ -33,6 +33,15 @@ if (typeof window.HTMLElement.prototype.scrollIntoView !== 'function') {
   window.HTMLElement.prototype.scrollIntoView = () => {}
 }
 
+// jsdom lacks ResizeObserver, which Radix Switch (react-use-size) requires.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 // Start MSW before the suite; fail loudly on any request without a handler.
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 

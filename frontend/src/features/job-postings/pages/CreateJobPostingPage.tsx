@@ -9,15 +9,32 @@ import { getApiErrorMessage } from '@/lib/api'
 import { JobPostingForm } from '../components/JobPostingForm'
 import { toCreatePayload, type JobPostingFormValues } from '../job-posting.schema'
 import { useCreateJobPosting } from '../hooks/use-job-postings'
+import { useStartJobIntelligenceRun } from '../hooks/use-job-intelligence'
 
 export default function CreateJobPostingPage() {
   const navigate = useNavigate()
   const { mutateAsync: createJobPosting, isPending } = useCreateJobPosting()
+  const startRun = useStartJobIntelligenceRun()
 
   async function onSubmit(values: JobPostingFormValues) {
     try {
       const posting = await createJobPosting(toCreatePayload(values))
       toast.success(`“${posting.title}” created as a draft`)
+
+      // Progressive enhancement: kick off the AI analysis when the officer opted in.
+      // Any failure here degrades to the manual workflow — never blocks the draft.
+      if (values.importEnabled && values.officialUrl?.trim()) {
+        try {
+          await startRun.mutateAsync({
+            jobPostingId: posting.id,
+            officialUrl: values.officialUrl.trim(),
+          })
+          toast.info('AI analysis started')
+        } catch (err) {
+          toast.warning(`AI analysis could not start: ${getApiErrorMessage(err)}`)
+        }
+      }
+
       navigate(ROUTES.OFFICER.JOB_POSTING_DETAIL(posting.id))
     } catch (err) {
       toast.error(getApiErrorMessage(err))
@@ -39,7 +56,7 @@ export default function CreateJobPostingPage() {
         <CardContent className="pt-6">
           <JobPostingForm
             mode="create"
-            isSubmitting={isPending}
+            isSubmitting={isPending || startRun.isPending}
             submitLabel="Create draft"
             onSubmit={onSubmit}
             onCancel={() => navigate(ROUTES.OFFICER.JOB_POSTINGS)}
