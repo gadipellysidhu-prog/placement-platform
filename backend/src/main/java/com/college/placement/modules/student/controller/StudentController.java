@@ -53,6 +53,31 @@ public class StudentController {
         return ResponseEntity.ok(studentService.getAll(pageable).map(StudentResponse::from));
     }
 
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "List student registrations awaiting approval (ROLE_STUDENT users with no profile)")
+    public ResponseEntity<Page<PendingRegistrationResponse>> listPending(Pageable pageable) {
+        return ResponseEntity.ok(
+                studentService.getPendingRegistrations(pageable).map(PendingRegistrationResponse::from));
+    }
+
+    @PostMapping("/approvals/{userId}")
+    @PreAuthorize("hasRole('PLACEMENT_OFFICER')")
+    @Operation(summary = "Approve a pending registration — creates and links the student profile", responses = {
+            @ApiResponse(responseCode = "201", description = "Student profile created"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "409", description = "Already approved or roll number taken"),
+            @ApiResponse(responseCode = "422", description = "Account is not a student account")
+    })
+    public ResponseEntity<StudentResponse> approve(@PathVariable UUID userId,
+                                                   @Valid @RequestBody StudentApprovalRequest req) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Student student = studentService.approveRegistration(
+                user, req.rollNumber(), req.branchId(), req.currentYear());
+        return ResponseEntity.status(HttpStatus.CREATED).body(StudentResponse.from(student));
+    }
+
     @GetMapping("/me")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get own student profile (authenticated student)")

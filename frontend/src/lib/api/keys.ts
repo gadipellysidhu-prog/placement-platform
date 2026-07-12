@@ -11,6 +11,7 @@ export const queryKeys = {
   students: {
     all: () => ['students'] as const,
     list: (params?: Record<string, unknown>) => ['students', 'list', params] as const,
+    pending: (params?: Record<string, unknown>) => ['students', 'pending', params] as const,
     me: () => ['students', 'me'] as const,
     detail: (id: string) => ['students', id] as const,
   },

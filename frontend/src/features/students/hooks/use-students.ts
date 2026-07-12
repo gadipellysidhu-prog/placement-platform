@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { studentsApi, queryKeys } from '@/lib/api'
-import type { UpdateStudentRequest } from '@/lib/api'
+import type { UpdateStudentRequest, ApproveRegistrationRequest } from '@/lib/api'
 import type { UpdateStudentStatusRequest } from '@/lib/api/students.api'
 import type { PageParams } from '@/types'
 
@@ -26,6 +26,31 @@ export function useMyStudentProfile() {
     queryKey: queryKeys.students.me(),
     queryFn: () => studentsApi.me(),
     staleTime: 30_000,
+  })
+}
+
+/** Registrations awaiting officer approval (ROLE_STUDENT accounts with no profile). */
+export function usePendingRegistrations(params?: PageParams) {
+  return useQuery({
+    queryKey: queryKeys.students.pending(params as Record<string, unknown> | undefined),
+    queryFn: () => studentsApi.listPending(params),
+    staleTime: 30_000,
+  })
+}
+
+/**
+ * Approve a pending registration. Invalidates the whole students tree so the pending
+ * list and the students list both refresh (the approved user leaves the former and
+ * appears in the latter).
+ */
+export function useApproveRegistration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { userId: string; data: ApproveRegistrationRequest }) =>
+      studentsApi.approve(vars.userId, vars.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.students.all() })
+    },
   })
 }
 

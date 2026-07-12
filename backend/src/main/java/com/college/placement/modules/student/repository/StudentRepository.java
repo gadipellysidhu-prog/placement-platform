@@ -1,6 +1,7 @@
 package com.college.placement.modules.student.repository;
 
 import com.college.placement.modules.auth.domain.AppUser;
+import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.domain.Student;
 import com.college.placement.modules.student.domain.StudentStatus;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,4 +42,15 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     List<Student> findByStatus(StudentStatus status);
 
     long countByStatus(StudentStatus status);
+
+    /**
+     * Users of the given role that have registered but have no student profile yet —
+     * i.e. pending approvals. Kept in the student module (which already depends on the
+     * auth module) so the auth module never has to know about {@link Student}.
+     */
+    @Query(value = "SELECT u FROM AppUser u WHERE u.role = :role "
+            + "AND NOT EXISTS (SELECT 1 FROM Student s WHERE s.user = u)",
+           countQuery = "SELECT COUNT(u) FROM AppUser u WHERE u.role = :role "
+            + "AND NOT EXISTS (SELECT 1 FROM Student s WHERE s.user = u)")
+    Page<AppUser> findUsersWithoutStudentProfile(@Param("role") Role role, Pageable pageable);
 }
