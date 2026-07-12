@@ -173,6 +173,15 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- jsoup — HTML parsing/sanitizing for the Job Intelligence pipeline:
+             strips boilerplate from fetched job pages and removes any HTML from
+             LLM output before storage (XSS defence). -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.3</version>
+        </dependency>
+
         <!-- AWS SDK v2 S3 — backs the S3/MinIO/S3-compatible storage provider.
              Includes the S3 pre-signer for time-limited download URLs. The
              active storage provider is selected via the 'storage.provider' property;
