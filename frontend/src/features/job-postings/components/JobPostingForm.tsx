@@ -1,9 +1,11 @@
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Bot } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Textarea } from '@/shared/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { Switch } from '@/shared/ui/switch'
 import { FormField } from '@/shared/forms/form-field'
 import { Spinner } from '@/shared/ui/spinner'
 import { jobPostingFormSchema, type JobPostingFormValues } from '../job-posting.schema'
@@ -17,6 +19,8 @@ export interface JobPostingFormDefaults {
   ctcMax?: string
   applicationDeadline?: string
   offerLimit?: string
+  importEnabled?: boolean
+  officialUrl?: string
 }
 
 interface JobPostingFormProps {
@@ -38,6 +42,8 @@ const EMPTY_DEFAULTS: Required<JobPostingFormDefaults> = {
   ctcMax: '',
   applicationDeadline: '',
   offerLimit: '',
+  importEnabled: false,
+  officialUrl: '',
 }
 
 export function JobPostingForm({
@@ -55,11 +61,14 @@ export function JobPostingForm({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
   } = useForm<JobPostingFormValues>({
     resolver: zodResolver(jobPostingFormSchema),
     defaultValues: { ...EMPTY_DEFAULTS, ...defaultValues },
   })
+
+  const importOn = watch('importEnabled')
 
   // Company selector is only relevant when creating; the picker is disabled during
   // submission and only mounted in create mode to avoid fetching the roster on edit.
@@ -164,6 +173,53 @@ export function JobPostingForm({
           />
         </FormField>
       </div>
+
+      {/* Official Job Information — powers the AI import workflow (create only).
+          With the toggle OFF the form behaves exactly like the manual version. */}
+      {isCreate && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Bot className="h-4 w-4 text-primary" aria-hidden="true" />
+                Official Job Information
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Provide the official posting URL and the AI will extract skills, suggest branches,
+                and update the catalog automatically after the draft is created.
+              </p>
+            </div>
+            <Controller
+              control={control}
+              name="importEnabled"
+              render={({ field }) => (
+                <Switch
+                  checked={!!field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
+                  aria-label="Import official job"
+                />
+              )}
+            />
+          </div>
+
+          {importOn && (
+            <FormField
+              label="Official job URL"
+              error={errors.officialUrl?.message}
+              hint="http(s) link to the company's official posting"
+              required
+            >
+              <Input
+                type="url"
+                placeholder="https://careers.example.com/jobs/123"
+                disabled={isSubmitting}
+                {...register('officialUrl')}
+              />
+            </FormField>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <Button type="submit" disabled={isSubmitting}>

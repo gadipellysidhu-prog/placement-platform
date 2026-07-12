@@ -60,7 +60,14 @@ export const queryKeys = {
   skills: {
     all: () => ['skills'] as const,
     list: (params?: Record<string, unknown>) => ['skills', 'list', params] as const,
+    search: (q: string) => ['skills', 'search', q] as const,
     detail: (id: string) => ['skills', id] as const,
+  },
+
+  jobIntelligence: {
+    all: () => ['job-intelligence'] as const,
+    run: (id: string) => ['job-intelligence', 'run', id] as const,
+    latest: (postingId: string) => ['job-intelligence', 'latest', postingId] as const,
   },
 
   dashboard: {

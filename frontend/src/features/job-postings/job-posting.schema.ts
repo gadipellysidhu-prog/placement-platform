@@ -27,24 +27,47 @@ const optionalCtc = z
     message: 'Must be a number of 0 or greater',
   })
 
-export const jobPostingFormSchema = z.object({
-  companyId: z.string().min(1, 'Company is required'),
-  title: z
-    .string()
-    .trim()
-    .min(1, 'Title is required')
-    .max(255, 'Title must be at most 255 characters'),
-  description: z.string().optional(),
-  ctcMin: optionalCtc,
-  ctcMax: optionalCtc,
-  applicationDeadline: z.string().optional(),
-  offerLimit: z
-    .string()
-    .trim()
-    .min(1, 'Offer limit is required')
-    .refine((v) => /^\d+$/.test(v), 'Offer limit must be a whole number')
-    .refine((v) => Number(v) >= 1, 'Offer limit must be at least 1'),
-})
+export const jobPostingFormSchema = z
+  .object({
+    companyId: z.string().min(1, 'Company is required'),
+    title: z
+      .string()
+      .trim()
+      .min(1, 'Title is required')
+      .max(255, 'Title must be at most 255 characters'),
+    description: z.string().optional(),
+    ctcMin: optionalCtc,
+    ctcMax: optionalCtc,
+    applicationDeadline: z.string().optional(),
+    offerLimit: z
+      .string()
+      .trim()
+      .min(1, 'Offer limit is required')
+      .refine((v) => /^\d+$/.test(v), 'Offer limit must be a whole number')
+      .refine((v) => Number(v) >= 1, 'Offer limit must be at least 1'),
+    // ── Official Job Information (AI import) — create mode only ──
+    importEnabled: z.boolean().optional(),
+    officialUrl: z.string().optional(),
+  })
+  .superRefine((values, ctx) => {
+    // The URL is only required (and only validated) when the AI import is on.
+    if (values.importEnabled) {
+      const url = (values.officialUrl ?? '').trim()
+      if (url === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['officialUrl'],
+          message: 'Official job URL is required when import is enabled',
+        })
+      } else if (!/^https?:\/\/.+/i.test(url)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['officialUrl'],
+          message: 'Enter a valid http(s) URL',
+        })
+      }
+    }
+  })
 
 export type JobPostingFormValues = z.infer<typeof jobPostingFormSchema>
 

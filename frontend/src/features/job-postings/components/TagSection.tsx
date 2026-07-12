@@ -24,6 +24,8 @@ interface TagSectionProps {
   removePendingId?: string | null
   onAdd: (id: string) => void
   onRemove: (id: string) => void
+  /** Optional replacement for the built-in Select+Add picker (e.g. search combobox). */
+  picker?: React.ReactNode
 }
 
 /**
@@ -42,6 +44,7 @@ export function TagSection({
   removePendingId,
   onAdd,
   onRemove,
+  picker,
 }: TagSectionProps) {
   const [selected, setSelected] = useState<string>('')
   const plural = nounPlural ?? `${noun}s`
@@ -83,38 +86,42 @@ export function TagSection({
         <p className="text-sm text-muted-foreground">No {plural} added yet.</p>
       )}
 
-      <div className="flex items-center gap-2">
-        <Select value={selected} onValueChange={setSelected} disabled={optionsLoading}>
-          <SelectTrigger className="w-56" aria-label={`Select a ${noun} to add`}>
-            <SelectValue
-              placeholder={
-                optionsLoading
-                  ? 'Loading…'
-                  : available.length === 0
-                    ? `All ${plural} added`
-                    : `Add a ${noun}…`
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {available.map((opt) => (
-              <SelectItem key={opt.id} value={opt.id}>
-                {opt.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleAdd}
-          disabled={!selected || addPending}
-        >
-          {addPending ? <Spinner size="sm" className="mr-1" /> : <Plus className="h-4 w-4" />}
-          Add
-        </Button>
-      </div>
+      {picker ?? (
+        <div className="flex items-center gap-2">
+          <Select value={selected} onValueChange={setSelected} disabled={optionsLoading}>
+            <SelectTrigger className="w-56" aria-label={`Select a ${noun} to add`}>
+              <SelectValue
+                placeholder={
+                  optionsLoading
+                    ? 'Loading…'
+                    : options.length === 0
+                      ? `No ${plural} available`
+                      : available.length === 0
+                        ? `All ${plural} added`
+                        : `Add a ${noun}…`
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {available.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id}>
+                  {opt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAdd}
+            disabled={!selected || addPending}
+          >
+            {addPending ? <Spinner size="sm" className="mr-1" /> : <Plus className="h-4 w-4" />}
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

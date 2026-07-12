@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,6 +16,10 @@ import { useAuthStore } from '@/stores/auth.store'
 import { formatCTCRange, formatDate, formatDateTime } from '@/utils/format'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { TagSection } from '../components/TagSection'
+import { SkillSearchPicker } from '../components/SkillSearchPicker'
+
+// Lazy: the AI panel (and its polling) only loads for officers.
+const JobIntelligencePanel = lazy(() => import('../components/JobIntelligencePanel'))
 import {
   useAddJobPostingBranch,
   useAddJobPostingSkill,
@@ -26,7 +30,7 @@ import {
   useRemoveJobPostingBranch,
   useRemoveJobPostingSkill,
 } from '../hooks/use-job-postings'
-import { useBranches, useSkills } from '../hooks/use-lookups'
+import { useBranches } from '../hooks/use-lookups'
 
 type LifecycleAction = 'open' | 'close' | 'cancel'
 
@@ -71,8 +75,7 @@ export default function JobPostingDetailPage() {
   const addBranch = useAddJobPostingBranch(id!)
   const removeBranch = useRemoveJobPostingBranch(id!)
 
-  // Lookup options are only needed by the officer tagging UI.
-  const skillsQuery = useSkills()
+  // Branch options feed the officer tagging UI; skills use the search picker.
   const branchesQuery = useBranches()
 
   const listRoute = isOfficer ? ROUTES.OFFICER.JOB_POSTINGS : ROUTES.STUDENT.JOB_POSTINGS
@@ -153,6 +156,12 @@ export default function JobPostingDetailPage() {
         }
       />
 
+      {isOfficer && (
+        <Suspense fallback={null}>
+          <JobIntelligencePanel postingId={posting.id} />
+        </Suspense>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Card>
@@ -196,8 +205,7 @@ export default function JobPostingDetailPage() {
                 <TagSection
                   noun="skill"
                   items={skills}
-                  options={skillsQuery.data ?? []}
-                  optionsLoading={skillsQuery.isLoading}
+                  options={[]}
                   addPending={addSkill.isPending}
                   removePendingId={removeSkill.isPending ? (removeSkill.variables ?? null) : null}
                   onAdd={(skillId) =>
@@ -205,6 +213,15 @@ export default function JobPostingDetailPage() {
                   }
                   onRemove={(skillId) =>
                     void runTag(() => removeSkill.mutateAsync(skillId), 'Skill removed')
+                  }
+                  picker={
+                    <SkillSearchPicker
+                      attachedIds={new Set(skills.map((s) => s.id))}
+                      addPending={addSkill.isPending}
+                      onAdd={(skillId) =>
+                        void runTag(() => addSkill.mutateAsync(skillId), 'Skill added')
+                      }
+                    />
                   }
                 />
               ) : (

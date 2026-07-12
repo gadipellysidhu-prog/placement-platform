@@ -7,6 +7,7 @@ export { offersApi } from './offers.api'
 export { certificatesApi } from './certificates.api'
 export { branchesApi } from './branches.api'
 export { skillsApi } from './skills.api'
+export { jobIntelligenceApi } from './job-intelligence.api'
 export { dashboardApi } from './dashboard.api'
 export { filesApi } from './files.api'
 export { queryKeys } from './keys'
@@ -33,6 +34,12 @@ export type {
 export type { OfferResponse, CreateOfferRequest } from './offers.api'
 export type { CertificateResponse, CreateCertificateRequest } from './certificates.api'
 export type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from './branches.api'
-export type { SkillResponse, CreateSkillRequest, UpdateSkillRequest } from './skills.api'
+export type {
+  SkillResponse,
+  CreateSkillRequest,
+  UpdateSkillRequest,
+  SkillSearchResult,
+} from './skills.api'
+export type { JobIntelligenceRun, RunStatus, StartRunRequest } from './job-intelligence.api'
 export type { DashboardSummary } from './dashboard.api'
 export type { FileResponse } from './files.api'
