@@ -51,6 +51,15 @@ const CreateJobPostingPage = lazy(
 )
 const EditJobPostingPage = lazy(() => import('@/features/job-postings/pages/EditJobPostingPage'))
 
+// Applications feature pages
+const MyApplicationsPage = lazy(() => import('@/features/applications/pages/MyApplicationsPage'))
+const ApplicationsPipelinePage = lazy(
+  () => import('@/features/applications/pages/ApplicationsPipelinePage'),
+)
+const ApplicationDetailPage = lazy(
+  () => import('@/features/applications/pages/ApplicationDetailPage'),
+)
+
 function AppRoutes(): React.ReactElement {
   return (
     <Suspense fallback={<LoadingPage />}>
@@ -86,6 +95,14 @@ function AppRoutes(): React.ReactElement {
             {/* Student routes */}
             <Route path={ROUTES.STUDENT.PROFILE} element={<StudentProfilePage />} />
 
+            {/* Applications — student view (own applications + owner detail). The
+                detail page is role-aware and 403-safe for non-owners. */}
+            <Route path={ROUTES.STUDENT.MY_APPLICATIONS} element={<MyApplicationsPage />} />
+            <Route
+              path={`${ROUTES.STUDENT.MY_APPLICATIONS}/:id`}
+              element={<ApplicationDetailPage />}
+            />
+
             {/* Officer/Admin routes — Students */}
             <Route path={ROUTES.OFFICER.STUDENTS} element={<StudentsListPage />} />
             <Route path={`${ROUTES.OFFICER.STUDENTS}/:id`} element={<StudentDetailPage />} />
@@ -111,6 +128,13 @@ function AppRoutes(): React.ReactElement {
               <Route
                 path={`${ROUTES.OFFICER.JOB_POSTINGS}/:id`}
                 element={<JobPostingDetailPage />}
+              />
+
+              {/* Applications — officer pipeline + role-aware detail (transitions). */}
+              <Route path={ROUTES.OFFICER.APPLICATIONS} element={<ApplicationsPipelinePage />} />
+              <Route
+                path={`${ROUTES.OFFICER.APPLICATIONS}/:id`}
+                element={<ApplicationDetailPage />}
               />
             </Route>
           </Route>
