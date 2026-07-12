@@ -24,6 +24,7 @@ export const ROUTES = {
     JOB_POSTINGS: '/dashboard/jobs',
     JOB_POSTING_DETAIL: (id: string) => `/dashboard/jobs/${id}` as const,
     MY_APPLICATIONS: '/dashboard/applications',
+    MY_APPLICATION_DETAIL: (id: string) => `/dashboard/applications/${id}` as const,
     MY_OFFERS: '/dashboard/offers',
     MY_CERTIFICATES: '/dashboard/certificates',
     SUBMIT_CERTIFICATE: '/dashboard/certificates/submit',

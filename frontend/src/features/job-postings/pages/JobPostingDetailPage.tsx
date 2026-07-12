@@ -17,6 +17,7 @@ import { formatCTCRange, formatDate, formatDateTime } from '@/utils/format'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { TagSection } from '../components/TagSection'
 import { SkillSearchPicker } from '../components/SkillSearchPicker'
+import { ApplyPanel } from '@/features/applications/components/ApplyPanel'
 
 // Lazy: the AI panel (and its polling) only loads for officers.
 const JobIntelligencePanel = lazy(() => import('../components/JobIntelligencePanel'))
@@ -307,26 +308,7 @@ export default function JobPostingDetailPage() {
             </Card>
           )}
 
-          {isStudent && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Apply</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {/*
-                  Phase 5 extension point — application submission.
-                  Wire this button to the applications feature (POST /api/applications
-                  via applicationsApi.create) when Phase 5 lands. Intentionally inert here.
-                */}
-                <Button className="w-full" disabled title="Applications open in a future release">
-                  Apply now
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Applications aren’t available yet — this will be enabled soon.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {isStudent && <ApplyPanel postingId={posting.id} postingStatus={posting.status} />}
         </div>
       </div>
 

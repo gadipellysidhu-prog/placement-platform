@@ -27,6 +27,7 @@ export type {
   ManageJobPostingsParams,
 } from './job-postings.api'
 export type {
+  ApplicationStatus,
   JobApplicationResponse,
   CreateApplicationRequest,
   UpdateApplicationStatusRequest,
