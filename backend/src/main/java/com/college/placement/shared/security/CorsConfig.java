@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://localhost:5174}")
     private String allowedOriginsRaw;
 
     @Bean
@@ -43,8 +43,8 @@ public class CorsConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/auth/**", config);
-source.registerCorsConfiguration("/api/**", config);
-source.registerCorsConfiguration("/actuator/**", config);
+        source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/actuator/**", config);
         return source;
     }
 }
