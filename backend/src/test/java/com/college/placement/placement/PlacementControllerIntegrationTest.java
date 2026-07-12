@@ -17,8 +17,10 @@ import com.college.placement.modules.placement.dto.JobApplicationStatusUpdateReq
 import com.college.placement.modules.placement.domain.ApplicationStatus;
 import com.college.placement.modules.placement.repository.JobApplicationRepository;
 import com.college.placement.modules.placement.repository.OfferRepository;
+import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.dto.StudentCreateRequest;
 import com.college.placement.modules.student.dto.StudentUpdateRequest;
+import com.college.placement.modules.student.repository.BranchRepository;
 import com.college.placement.modules.student.repository.StudentRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +56,7 @@ class PlacementControllerIntegrationTest {
     @Autowired JobApplicationRepository applicationRepo;
     @Autowired JobPostingRepository jobPostingRepo;
     @Autowired CompanyRepository companyRepo;
+    @Autowired BranchRepository branchRepo;
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 
@@ -64,6 +67,7 @@ class PlacementControllerIntegrationTest {
         certRepo.deleteAll();
         studentRepo.deleteAll();
         jobPostingRepo.deleteAll();
+        branchRepo.deleteAll();
         companyRepo.deleteAll();
         refreshTokenRepo.deleteAll();
         userRepo.deleteAll();
@@ -76,6 +80,93 @@ class PlacementControllerIntegrationTest {
 
         UUID studentId = createStudentAndMakeEligible(officer, "student@test.com", "CS2021001");
         String postingId = createOpenPosting(officer);
+
+        JobApplicationCreateRequest req = new JobApplicationCreateRequest(studentId, UUID.fromString(postingId));
+
+        mvc.perform(post("/api/applications")
+                        .header("Authorization", "Bearer " + student.accessToken())
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("APPLIED"));
+    }
+
+    @Test
+    void apply_placementIneligibleStudent_returns422() throws Exception {
+        TokenResponse officer = register("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        TokenResponse student = register("student@test.com", Role.ROLE_STUDENT);
+
+        UUID studentId = createStudentAndMakeEligible(officer, "student@test.com", "CS2021010");
+        String postingId = createOpenPosting(officer);
+
+        // Officer override: mark the student ineligible for placement.
+        var studentEntity = studentRepo.findById(studentId).orElseThrow();
+        studentEntity.setPlacementEligible(false);
+        studentRepo.save(studentEntity);
+
+        JobApplicationCreateRequest req = new JobApplicationCreateRequest(studentId, UUID.fromString(postingId));
+
+        mvc.perform(post("/api/applications")
+                        .header("Authorization", "Bearer " + student.accessToken())
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void apply_branchRestrictedPosting_ineligibleBranch_returns422() throws Exception {
+        TokenResponse officer = register("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        TokenResponse student = register("student@test.com", Role.ROLE_STUDENT);
+
+        UUID studentId = createStudentAndMakeEligible(officer, "student@test.com", "CS2021011");
+        String postingId = createOpenPosting(officer);
+
+        // Restrict the posting to a branch the student is not part of (student has no branch assigned).
+        Branch eligibleBranch = createBranch("Mechanical Engineering", "ME");
+        restrictPostingToBranch(officer, postingId, eligibleBranch.getId());
+
+        JobApplicationCreateRequest req = new JobApplicationCreateRequest(studentId, UUID.fromString(postingId));
+
+        mvc.perform(post("/api/applications")
+                        .header("Authorization", "Bearer " + student.accessToken())
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void apply_branchRestrictedPosting_studentBranchNotEligible_returns422() throws Exception {
+        TokenResponse officer = register("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        TokenResponse student = register("student@test.com", Role.ROLE_STUDENT);
+
+        UUID studentId = createStudentAndMakeEligible(officer, "student@test.com", "CS2021012");
+        Branch studentBranch = createBranch("Civil Engineering", "CE");
+        assignBranch(officer, studentId, studentBranch.getId());
+
+        String postingId = createOpenPosting(officer);
+        Branch eligibleBranch = createBranch("Mechanical Engineering", "ME");
+        restrictPostingToBranch(officer, postingId, eligibleBranch.getId());
+
+        JobApplicationCreateRequest req = new JobApplicationCreateRequest(studentId, UUID.fromString(postingId));
+
+        mvc.perform(post("/api/applications")
+                        .header("Authorization", "Bearer " + student.accessToken())
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void apply_branchRestrictedPosting_studentBranchEligible_returns201() throws Exception {
+        TokenResponse officer = register("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        TokenResponse student = register("student@test.com", Role.ROLE_STUDENT);
+
+        UUID studentId = createStudentAndMakeEligible(officer, "student@test.com", "CS2021013");
+        Branch branch = createBranch("Computer Science", "CS");
+        assignBranch(officer, studentId, branch.getId());
+
+        String postingId = createOpenPosting(officer);
+        restrictPostingToBranch(officer, postingId, branch.getId());
 
         JobApplicationCreateRequest req = new JobApplicationCreateRequest(studentId, UUID.fromString(postingId));
 
@@ -223,6 +314,27 @@ class PlacementControllerIntegrationTest {
                 .header("Authorization", "Bearer " + officer.accessToken()))
                 .andExpect(status().isOk());
         return postingId;
+    }
+
+    private Branch createBranch(String name, String code) {
+        Branch branch = new Branch();
+        branch.setName(name);
+        branch.setCode(code);
+        return branchRepo.save(branch);
+    }
+
+    private void assignBranch(TokenResponse officer, UUID studentId, UUID branchId) throws Exception {
+        mvc.perform(put("/api/students/" + studentId)
+                        .header("Authorization", "Bearer " + officer.accessToken())
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new StudentUpdateRequest(branchId, new BigDecimal("7.5"), 2))))
+                .andExpect(status().isOk());
+    }
+
+    private void restrictPostingToBranch(TokenResponse officer, String postingId, UUID branchId) throws Exception {
+        mvc.perform(post("/api/job-postings/" + postingId + "/branches/" + branchId)
+                        .header("Authorization", "Bearer " + officer.accessToken()))
+                .andExpect(status().isOk());
     }
 
     private String createCompany(TokenResponse officer, String name) throws Exception {

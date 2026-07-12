@@ -31,5 +31,36 @@ export const handlers = [
 
   http.post(`${API_BASE_URL}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
 
+  // ── Auth journeys ────────────────────────────────────────────────────────
+  // The backend returns a MessageResponse envelope; success statuses mirror
+  // AuthController (200 for confirm/reset/accept, 202 for the "send email" pair).
+  http.post(`${API_BASE_URL}/auth/verify-email/confirm`, () =>
+    HttpResponse.json({ message: 'Email verified successfully.' }),
+  ),
+
+  http.post(`${API_BASE_URL}/auth/resend-verification`, () =>
+    HttpResponse.json(
+      { message: 'If an account exists for that email, a message has been sent.' },
+      { status: 202 },
+    ),
+  ),
+
+  http.post(`${API_BASE_URL}/auth/forgot-password`, () =>
+    HttpResponse.json(
+      { message: 'If an account exists for that email, a message has been sent.' },
+      { status: 202 },
+    ),
+  ),
+
+  http.post(`${API_BASE_URL}/auth/reset-password`, () =>
+    HttpResponse.json({ message: 'Password has been reset. Please sign in again.' }),
+  ),
+
+  http.post(`${API_BASE_URL}/auth/accept-invitation`, () =>
+    HttpResponse.json({
+      message: 'Invitation accepted. Your account is now active — please sign in.',
+    }),
+  ),
+
   http.get(`${API_BASE_URL}/api/users/me`, () => HttpResponse.json(mockStudentUser)),
 ]

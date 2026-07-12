@@ -50,6 +50,23 @@ public class AIGovernanceService {
         return aiModelRepository.findByEnabledTrue();
     }
 
+    /**
+     * Idempotent lookup-or-register of a model catalog row. Used by callers (e.g. the
+     * Job Intelligence pipeline) whose model identity comes from configuration, so the
+     * governance ledger always has a row to attach inference history to.
+     */
+    @Transactional
+    public AIModel ensureModel(String name, String provider, String modelVersion) {
+        return aiModelRepository.findByName(name).orElseGet(() -> {
+            AIModel model = new AIModel();
+            model.setName(name);
+            model.setProvider(provider);
+            model.setModelVersion(modelVersion);
+            model.setEnabled(true);
+            return aiModelRepository.save(model);
+        });
+    }
+
     // ── PromptRegistry ───────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)

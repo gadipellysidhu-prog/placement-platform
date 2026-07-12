@@ -17,8 +17,13 @@ export type { StudentResponse, CreateStudentRequest, UpdateStudentRequest } from
 export type { CompanyResponse, CreateCompanyRequest, UpdateCompanyRequest } from './companies.api'
 export type {
   JobPostingResponse,
+  JobPostingStatus,
+  JobPostingSkillRef,
+  JobPostingBranchRef,
   CreateJobPostingRequest,
   UpdateJobPostingRequest,
+  ListJobPostingsParams,
+  ManageJobPostingsParams,
 } from './job-postings.api'
 export type {
   JobApplicationResponse,

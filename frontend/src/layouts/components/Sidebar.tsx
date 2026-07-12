@@ -60,7 +60,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: 'Companies', href: ROUTES.OFFICER.COMPANIES, icon: Building2 },
   {
-    label: 'Job Postings',
+    label: 'Manage Postings',
     href: ROUTES.OFFICER.JOB_POSTINGS,
     icon: Briefcase,
     allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
