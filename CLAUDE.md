@@ -252,6 +252,8 @@ Each `modules/<name>/` sub-package follows a strict layered structure:
 | A–C — Auth increments (email verification/enforcement) | ✅ Complete |
 | D — IAM / Admin (user admin, roles, invitations, account lifecycle) | ✅ Complete |
 | E — Analytics & Reporting (`modules/analytics`) | ✅ Complete |
+| F — Master Skills Catalog (aliases, normalization, search — V19) | ✅ Complete |
+| G — AI Job Intelligence (`modules/jobintelligence` — see `backend/docs/job-intelligence.md`) | ✅ Complete |
 | Policy module | 🔲 Placeholder (not yet required) |
 
 ### Analytics & Reporting (Phase E — complete)

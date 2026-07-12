@@ -173,6 +173,15 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- jsoup — HTML parsing/sanitizing for the Job Intelligence pipeline:
+             strips boilerplate from fetched job pages and removes any HTML from
+             LLM output before storage (XSS defence). -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.3</version>
+        </dependency>
+
         <!-- AWS SDK v2 S3 — backs the S3/MinIO/S3-compatible storage provider.
              Includes the S3 pre-signer for time-limited download URLs. The
              active storage provider is selected via the 'storage.provider' property;
@@ -181,15 +190,35 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <exclusions>
-                <!-- The storage provider uses the synchronous S3Client (backed by the
-                     bundled apache-client), never the Netty async client. Excluding the
-                     unused netty-nio-client removes the entire Netty stack (and its CVEs,
-                     e.g. CVE-2026-42582) with no functional impact. -->
+                <!-- The storage provider uses the synchronous S3Client, never the Netty
+                     async client. Excluding the unused netty-nio-client removes the entire
+                     Netty stack (and its CVEs, e.g. CVE-2026-42582) with no functional impact. -->
                 <exclusion>
                     <groupId>software.amazon.awssdk</groupId>
                     <artifactId>netty-nio-client</artifactId>
                 </exclusion>
+                <!-- apache-client is built on Apache HttpClient 4.5 / httpcore 4.4.x. httpcore
+                     4.4.16 (the terminal, EOL release of the 4.4.x line — there is no 4.4.17,
+                     the successor is httpcore5) carries CVE-2026-54399 and CVE-2026-54428
+                     (both CVSS 7.5), and AWS SDK v2's apache-client pins httpcore 4.4.16 in
+                     every 2.x release, so no awssdk upgrade or version override can patch it.
+                     Excluding apache-client in favour of the JDK-native url-connection-client
+                     below removes httpclient + httpcore from the classpath entirely. Mirrors
+                     the netty exclusion above; the synchronous S3Client works with any
+                     SdkHttpClient and the code selects the client by classpath auto-detection. -->
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+
+        <!-- JDK-native synchronous HTTP client for the AWS SDK (uses java.net.HttpURLConnection).
+             Replaces the excluded apache-client; carries no Apache HttpComponents dependency.
+             Version is managed by the AWS SDK BOM imported above. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
         </dependency>
 
         <!-- Testing -->

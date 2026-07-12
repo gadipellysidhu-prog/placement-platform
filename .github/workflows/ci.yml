@@ -413,9 +413,47 @@ jobs:
           unzip -l "$jar" | grep -q 'BOOT-INF/classes/'        && echo "  ✓ BOOT-INF/classes present"
           unzip -l "$jar" | grep -q 'org/springframework/boot/' && echo "  ✓ Spring Boot launcher present"
 
-  # ── Stage 9: Release Readiness Summary ────────────────────────────────────
+  # ── Stage 9: Frontend Quality Gate ────────────────────────────────────────
+  # Fully independent of the backend stages — neither side blocks the other.
+  # Every step runs from the frontend/ workspace and gates the PR on failure.
+  frontend-quality:
+    name: "Stage 9 · Frontend Quality"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (clean, lockfile-pinned)
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Format check (Prettier)
+        run: npm run format:check
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Unit & integration tests (Vitest + MSW)
+        run: npm run test
+
+      - name: Production build (Vite)
+        run: npm run build
+
+  # ── Stage 10: Release Readiness Summary ───────────────────────────────────
   release-readiness:
-    name: "Stage 9 · Release Readiness"
+    name: "Stage 10 · Release Readiness"
     runs-on: ubuntu-latest
     needs:
       - test
@@ -426,6 +464,7 @@ jobs:
       - docker-build
       - container-scan
       - deployment-readiness
+      - frontend-quality
     if: always()
     steps:
       - name: Pipeline summary
@@ -438,6 +477,7 @@ jobs:
           R_DOCKER:      ${{ needs.docker-build.result }}
           R_CONTAINER:   ${{ needs.container-scan.result }}
           R_READINESS:   ${{ needs.deployment-readiness.result }}
+          R_FRONTEND:    ${{ needs.frontend-quality.result }}
         run: |
           icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
 
@@ -456,11 +496,12 @@ jobs:
             echo "| Docker Build+Health  | $(icon $R_DOCKER) \`$R_DOCKER\` |"
             echo "| Container CVE Scan   | $(icon $R_CONTAINER) \`$R_CONTAINER\` |"
             echo "| Deployment Readiness | $(icon $R_READINESS) \`$R_READINESS\` |"
+            echo "| Frontend Quality     | $(icon $R_FRONTEND) \`$R_FRONTEND\` |"
           } >> $GITHUB_STEP_SUMMARY
 
           # Fail if any critical gate failed
           for result in "$R_TEST" "$R_PACKAGE" "$R_FLYWAY" "$R_QUALITY" \
-                        "$R_DOCKER" "$R_CONTAINER" "$R_READINESS"; do
+                        "$R_DOCKER" "$R_CONTAINER" "$R_READINESS" "$R_FRONTEND"; do
             if [ "$result" = "failure" ]; then
               echo "::error::One or more critical pipeline gates failed."
               exit 1

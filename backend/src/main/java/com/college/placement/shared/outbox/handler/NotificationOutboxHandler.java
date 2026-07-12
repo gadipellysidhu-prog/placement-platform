@@ -92,8 +92,28 @@ public class NotificationOutboxHandler implements OutboxEventHandler {
             case "CertificateVerifiedEvent" -> new Message(
                     "Certificate verified",
                     "One of your certificates has been verified and added to your profile.");
+            case "JobIntelligenceCompletedEvent" -> composeJobIntelligenceMessage(event);
             default -> null;
         };
+    }
+
+    /** AI extraction outcome for the requesting placement officer. */
+    private Message composeJobIntelligenceMessage(OutboxEvent event) {
+        JsonNode payload = parsePayload(event.getPayload());
+        boolean success = payload != null && payload.path("success").asBoolean(false);
+        String title = payload != null ? payload.path("postingTitle").asText("your job posting") : "your job posting";
+        if (success) {
+            int tagged = payload.path("skillsTagged").asInt(0);
+            return new Message(
+                    "AI analysis completed: " + title,
+                    "The AI analysis of the official job posting finished. " + tagged
+                            + " skill(s) were attached automatically. Please review the suggestions"
+                            + " and adjust anything before publishing.");
+        }
+        return new Message(
+                "AI analysis failed: " + title,
+                "The AI analysis of the official job posting could not be completed."
+                        + " You can retry the analysis from the posting page or continue manually.");
     }
 
     // ── Recipient resolution ─────────────────────────────────────────────────
@@ -101,11 +121,14 @@ public class NotificationOutboxHandler implements OutboxEventHandler {
     private Optional<AppUser> resolveRecipient(OutboxEvent event) {
         JsonNode payload = parsePayload(event.getPayload());
 
-        // 1. Explicit email carried on the event.
-        if (payload != null && payload.hasNonNull("email")) {
-            Optional<AppUser> byEmail = appUserRepository.findByEmail(payload.get("email").asText());
-            if (byEmail.isPresent()) {
-                return byEmail;
+        // 1. Explicit email carried on the event ("email", or "requestedBy" for
+        //    operator-initiated events such as AI extraction runs).
+        for (String field : new String[] {"email", "requestedBy"}) {
+            if (payload != null && payload.hasNonNull(field)) {
+                Optional<AppUser> byEmail = appUserRepository.findByEmail(payload.get(field).asText());
+                if (byEmail.isPresent()) {
+                    return byEmail;
+                }
             }
         }
 

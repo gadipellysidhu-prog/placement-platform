@@ -8,6 +8,13 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
 
+  // Auth journeys — paths MUST match the SPA URLs the backend embeds in emails
+  // (auth.verification.* in application.yml: /verify-email, /reset-password,
+  // /accept-invitation, each carrying a `?token=` query parameter).
+  VERIFY_EMAIL: '/verify-email',
+  RESET_PASSWORD: '/reset-password',
+  ACCEPT_INVITATION: '/accept-invitation',
+
   // Root
   DASHBOARD: '/dashboard',
 
@@ -32,6 +39,7 @@ export const ROUTES = {
     JOB_POSTINGS: '/dashboard/manage/jobs',
     JOB_POSTING_DETAIL: (id: string) => `/dashboard/manage/jobs/${id}` as const,
     CREATE_JOB_POSTING: '/dashboard/manage/jobs/new',
+    EDIT_JOB_POSTING: (id: string) => `/dashboard/manage/jobs/${id}/edit` as const,
     APPLICATIONS: '/dashboard/manage/applications',
     APPLICATION_DETAIL: (id: string) => `/dashboard/manage/applications/${id}` as const,
     OFFERS: '/dashboard/manage/offers',
