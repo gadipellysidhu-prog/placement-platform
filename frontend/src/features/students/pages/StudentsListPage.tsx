@@ -138,11 +138,20 @@ export default function StudentsListPage() {
                       <p className="truncate text-xs text-muted-foreground">
                         {reg.email} · Registered {formatDateTime(reg.createdAt)}
                         {!reg.emailVerified && (
-                          <span className="ml-1 text-warning">· email unverified</span>
+                          <span className="ml-1 text-warning">· awaiting email verification</span>
                         )}
                       </p>
                     </div>
-                    <Button size="sm" onClick={() => setSelected(reg)} disabled={approve.isPending}>
+                    <Button
+                      size="sm"
+                      onClick={() => setSelected(reg)}
+                      disabled={approve.isPending || !reg.emailVerified}
+                      title={
+                        reg.emailVerified
+                          ? undefined
+                          : 'The student must verify their email before they can be approved.'
+                      }
+                    >
                       <UserPlus className="h-4 w-4" /> Approve
                     </Button>
                   </li>

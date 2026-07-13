@@ -70,12 +70,25 @@ public class StudentService {
      * checks, persistence, {@code StudentCreatedEvent}) to {@link #createStudent} so the
      * approval path and {@code POST /api/students} share one code path. The profile's
      * existence is itself the approval marker — no separate request entity is tracked.
+     *
+     * <p>Approval requires the account's email to be verified. Email verification is an
+     * authentication concern — everywhere in the platform {@code emailVerified} is set only
+     * by consuming an emailed token (proof the user controls the inbox), and
+     * {@code AuthService.login} refuses unverified accounts. Admin approval is an
+     * authorization decision and must not fabricate that proof, so it gates on (rather than
+     * grants) verification. This keeps the two controls orthogonal: the student proves email
+     * ownership, the officer authorizes the profile, and an approved student can log in
+     * immediately.
      */
     @Transactional
     public Student approveRegistration(AppUser user, String rollNumber, UUID branchId, int currentYear) {
         if (user.getRole() != Role.ROLE_STUDENT) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Only student accounts can be approved as student profiles");
+        }
+        if (!user.isEmailVerified()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Cannot approve — the student has not verified their email address yet.");
         }
         if (studentRepository.existsByUser(user)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
