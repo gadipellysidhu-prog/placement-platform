@@ -7,6 +7,7 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ class ObservabilityIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired PasswordEncoder passwordEncoder;
 
@@ -46,13 +48,7 @@ class ObservabilityIntegrationTest {
 
     @BeforeEach
     void cleanDb() {
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-        try {
-            refreshTokenRepository.deleteAll();
-            userRepository.deleteAll();
-        } finally {
-            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
-        }
+        databaseCleaner.clean();
     }
 
     @Test

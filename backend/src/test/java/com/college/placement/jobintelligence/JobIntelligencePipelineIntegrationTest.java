@@ -20,6 +20,7 @@ import com.college.placement.modules.student.domain.SkillCreatedSource;
 import com.college.placement.modules.student.repository.BranchRepository;
 import com.college.placement.modules.student.repository.SkillAliasRepository;
 import com.college.placement.modules.student.repository.SkillRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.college.placement.shared.settings.domain.SettingValueType;
 import com.college.placement.shared.settings.service.SettingsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,6 +82,7 @@ class JobIntelligencePipelineIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired CompanyRepository companyRepo;
     @Autowired JobPostingRepository jobPostingRepo;
@@ -120,6 +122,9 @@ class JobIntelligencePipelineIntegrationTest {
 
     @BeforeEach
     void clean() {
+        // FK-safe user/student graph first (clears applications → releases job postings,
+        // and students → releases the student_skills join before skills are deleted).
+        databaseCleaner.clean();
         runRepo.deleteAll();
         cacheRepo.deleteAll();
         jobPostingRepo.deleteAll();
@@ -127,8 +132,6 @@ class JobIntelligencePipelineIntegrationTest {
         skillAliasRepo.deleteAll();
         skillRepo.deleteAll();
         branchRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
         settingsService.evictCache();
         settingsService.upsert("job.intelligence.enabled", "true", SettingValueType.BOOLEAN,
                 "job-intelligence", "test", null);

@@ -6,6 +6,7 @@ import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,12 +49,12 @@ class DevDataSeederIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanDb() {
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     private void runSeeder() {

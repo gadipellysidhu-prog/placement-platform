@@ -7,6 +7,7 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class AuthValidationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired JdbcTemplate jdbcTemplate;
 
     private static final String JSON         = MediaType.APPLICATION_JSON_VALUE;
@@ -39,13 +41,7 @@ class AuthValidationTest {
 
     @BeforeEach
     void cleanDb() {
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-        try {
-            refreshTokenRepository.deleteAll();
-            userRepository.deleteAll();
-        } finally {
-            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
-        }
+        databaseCleaner.clean();
     }
 
     // ── Registration Validation ───────────────────────────────────────────────

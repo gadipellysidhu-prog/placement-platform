@@ -10,6 +10,7 @@ import com.college.placement.modules.student.dto.SkillAliasRequest;
 import com.college.placement.modules.student.dto.SkillCreateRequest;
 import com.college.placement.modules.student.repository.SkillAliasRepository;
 import com.college.placement.modules.student.repository.SkillRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,16 +41,18 @@ class SkillCatalogControllerIntegrationTest {
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired SkillRepository skillRepo;
     @Autowired SkillAliasRepository skillAliasRepo;
+    @Autowired DatabaseCleaner databaseCleaner;
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
     private static final String TEST_PASSWORD = "password123";
 
     @BeforeEach
     void clean() {
+        // Clear the AppUser/Student graph (FK-safe) before wiping this suite's skills.
+        // Students must go before skills to release the student_skills join.
+        databaseCleaner.clean();
         skillAliasRepo.deleteAll();
         skillRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
     }
 
     // ── Search ───────────────────────────────────────────────────────────────

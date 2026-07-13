@@ -7,6 +7,7 @@ import com.college.placement.modules.auth.domain.VerificationTokenType;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.college.placement.modules.auth.repository.VerificationTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.college.placement.modules.auth.service.VerificationTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class VerificationTokenServiceTest {
     @Autowired VerificationTokenRepository tokenRepository;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
 
     private AppUser user;
 
@@ -38,8 +40,7 @@ class VerificationTokenServiceTest {
         // Clear user-dependent rows left by other tests in the shared context before
         // deleting users (verification_tokens/notification_history cascade; refresh_tokens do not).
         tokenRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
         AppUser u = new AppUser();
         u.setEmail("token-user@test.com");
         u.setPasswordHash("hash");
