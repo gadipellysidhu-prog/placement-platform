@@ -34,6 +34,22 @@ export interface UpdateStudentStatusRequest {
   status: StudentResponse['status']
 }
 
+/** A registered ROLE_STUDENT account with no profile yet — awaiting officer approval. */
+export interface PendingRegistrationResponse {
+  userId: string
+  email: string
+  displayName: string
+  emailVerified: boolean
+  createdAt: string
+}
+
+/** Profile details assigned when approving a pending registration. */
+export interface ApproveRegistrationRequest {
+  rollNumber: string
+  branchId?: string
+  currentYear: number
+}
+
 export const studentsApi = {
   create: (data: CreateStudentRequest) =>
     apiClient.post<StudentResponse>('/api/students', data).then((r) => r.data),
@@ -42,6 +58,16 @@ export const studentsApi = {
     apiClient.get<Page<StudentResponse>>('/api/students', { params }).then((r) => r.data),
 
   me: () => apiClient.get<StudentResponse>('/api/students/me').then((r) => r.data),
+
+  /** Registrations awaiting approval (paginated). */
+  listPending: (params?: PageParams) =>
+    apiClient
+      .get<Page<PendingRegistrationResponse>>('/api/students/pending', { params })
+      .then((r) => r.data),
+
+  /** Approve a pending registration — creates and links the student profile. */
+  approve: (userId: string, data: ApproveRegistrationRequest) =>
+    apiClient.post<StudentResponse>(`/api/students/approvals/${userId}`, data).then((r) => r.data),
 
   getById: (id: string) =>
     apiClient.get<StudentResponse>(`/api/students/${id}`).then((r) => r.data),

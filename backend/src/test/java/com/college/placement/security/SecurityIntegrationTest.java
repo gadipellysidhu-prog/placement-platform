@@ -7,6 +7,7 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.college.placement.shared.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,7 @@ class SecurityIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired RateLimitFilter rateLimitFilter;
     @Autowired JdbcTemplate jdbcTemplate;
@@ -52,15 +54,9 @@ class SecurityIntegrationTest {
 
     @BeforeEach
     void cleanDb() {
-        // Disable FK checks so we can cleanly wipe auth tables regardless of child rows
-        // created by other integration tests sharing the same H2 context.
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-        try {
-            refreshTokenRepository.deleteAll();
-            userRepository.deleteAll();
-        } finally {
-            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
-        }
+        // FK-safe cleanup of child rows created by other integration tests sharing the
+        // same H2 context (students, recruiters, refresh tokens, ...), then app users.
+        databaseCleaner.clean();
         rateLimitFilter.clearAll();
     }
 

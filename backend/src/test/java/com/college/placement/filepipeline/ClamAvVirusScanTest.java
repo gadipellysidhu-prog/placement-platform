@@ -9,6 +9,7 @@ import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.college.placement.shared.filepipeline.domain.FileScanStatus;
 import com.college.placement.shared.filepipeline.repository.FileScanRecordRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.college.placement.shared.filepipeline.service.ClamAvService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -72,6 +73,7 @@ class ClamAvVirusScanTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired FileScanRecordRepository scanRepo;
     @Autowired PasswordEncoder passwordEncoder;
 
@@ -83,16 +85,14 @@ class ClamAvVirusScanTest {
     @BeforeEach
     void setUp() {
         scanRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
+        databaseCleaner.clean();
     }
 
     @AfterEach
     void tearDown() {
         Mockito.reset(clamAvService);
         scanRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
+        databaseCleaner.clean();
     }
 
     // ── INFECTED file upload ──────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ class AuthIntegrationTest {
     @Autowired ObjectMapper objectMapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired PasswordEncoder passwordEncoder;
 
     private static final String STUDENT_EMAIL   = "student@test.com";
@@ -55,9 +57,9 @@ class AuthIntegrationTest {
 
     @BeforeEach
     void cleanDb() {
-        // child first to respect FK constraint
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
+        // FK-safe: clears the whole AppUser/Student graph (students, recruiters, refresh
+        // tokens, ...) so leftover rows from other tests in the shared context don't block.
+        databaseCleaner.clean();
     }
 
     // ── Register ──────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.college.placement.modules.auth.repository.VerificationTokenRepository;
 import com.college.placement.modules.notification.domain.NotificationHistory;
 import com.college.placement.modules.notification.repository.NotificationHistoryRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,14 +49,14 @@ class EmailVerificationEnforcementTest {
     @Autowired AppUserRepository userRepo;
     @Autowired VerificationTokenRepository tokenRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired NotificationHistoryRepository notificationRepo;
 
     @BeforeEach
     void clean() {
         tokenRepo.deleteAll();
         notificationRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
+        databaseCleaner.clean();
     }
 
     @Test

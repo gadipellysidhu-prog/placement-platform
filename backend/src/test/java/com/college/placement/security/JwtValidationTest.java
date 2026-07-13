@@ -7,6 +7,7 @@ import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.college.placement.shared.security.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
@@ -51,6 +52,7 @@ class JwtValidationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired JwtService jwtService;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -61,13 +63,7 @@ class JwtValidationTest {
 
     @BeforeEach
     void clean() {
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-        try {
-            refreshTokenRepo.deleteAll();
-            userRepo.deleteAll();
-        } finally {
-            jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
-        }
+        databaseCleaner.clean();
     }
 
     // ── Expired token ─────────────────────────────────────────────────────────

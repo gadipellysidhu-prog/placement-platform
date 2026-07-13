@@ -14,7 +14,13 @@ export { queryKeys } from './keys'
 export { normalizeApiError, getApiErrorMessage } from './error'
 
 export type { LoginRequest, RegisterRequest } from './auth.api'
-export type { StudentResponse, CreateStudentRequest, UpdateStudentRequest } from './students.api'
+export type {
+  StudentResponse,
+  CreateStudentRequest,
+  UpdateStudentRequest,
+  PendingRegistrationResponse,
+  ApproveRegistrationRequest,
+} from './students.api'
 export type { CompanyResponse, CreateCompanyRequest, UpdateCompanyRequest } from './companies.api'
 export type {
   JobPostingResponse,

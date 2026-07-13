@@ -8,6 +8,7 @@ import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
 import com.college.placement.shared.filepipeline.repository.FileScanRecordRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ class FileControllerIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired DatabaseCleaner databaseCleaner;
     @Autowired FileScanRecordRepository fileScanRecordRepository;
     @Autowired PasswordEncoder passwordEncoder;
 
@@ -62,15 +64,13 @@ class FileControllerIntegrationTest {
     @BeforeEach
     void cleanDb() {
         fileScanRecordRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     @AfterEach
     void cleanDbAfter() {
         fileScanRecordRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     // ── Upload — success ──────────────────────────────────────────────────────

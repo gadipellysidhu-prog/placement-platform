@@ -1,6 +1,7 @@
 package com.college.placement.modules.student.service;
 
 import com.college.placement.modules.auth.domain.AppUser;
+import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.domain.Skill;
 import com.college.placement.modules.student.domain.Student;
@@ -61,6 +62,31 @@ public class StudentService {
         Student saved = studentRepository.save(student);
         eventPublisher.publish(StudentCreatedEvent.of(saved.getId(), user.getId(), rollNumber));
         return getById(saved.getId());
+    }
+
+    /**
+     * Approve a pending student registration: create the profile for an existing
+     * {@code ROLE_STUDENT} account and link it. Delegates the actual creation (dedup
+     * checks, persistence, {@code StudentCreatedEvent}) to {@link #createStudent} so the
+     * approval path and {@code POST /api/students} share one code path. The profile's
+     * existence is itself the approval marker — no separate request entity is tracked.
+     */
+    @Transactional
+    public Student approveRegistration(AppUser user, String rollNumber, UUID branchId, int currentYear) {
+        if (user.getRole() != Role.ROLE_STUDENT) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Only student accounts can be approved as student profiles");
+        }
+        if (studentRepository.existsByUser(user)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This registration has already been approved");
+        }
+        return createStudent(user, rollNumber, branchId, currentYear);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AppUser> getPendingRegistrations(Pageable pageable) {
+        return studentRepository.findUsersWithoutStudentProfile(Role.ROLE_STUDENT, pageable);
     }
 
     @Transactional
@@ -143,7 +169,13 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public Page<Student> getAll(Pageable pageable) {
-        return studentRepository.findAll(pageable);
+        Page<Student> page = studentRepository.findAll(pageable);
+        // findAll fetch-joins user+branch but intentionally not the skills collection
+        // (joining a collection breaks SQL-level pagination). With open-in-view=false the
+        // response is mapped after the session closes, so initialise skills here — one
+        // batched SELECT via @BatchSize(50) — to avoid a LazyInitializationException.
+        page.getContent().forEach(student -> student.getSkills().size());
+        return page;
     }
 
     private void validateStatusTransition(StudentStatus current, StudentStatus next) {
