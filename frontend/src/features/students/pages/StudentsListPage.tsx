@@ -137,21 +137,11 @@ export default function StudentsListPage() {
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {reg.email} · Registered {formatDateTime(reg.createdAt)}
-                        {!reg.emailVerified && (
-                          <span className="ml-1 text-warning">· awaiting email verification</span>
-                        )}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => setSelected(reg)}
-                      disabled={approve.isPending || !reg.emailVerified}
-                      title={
-                        reg.emailVerified
-                          ? undefined
-                          : 'The student must verify their email before they can be approved.'
-                      }
-                    >
+                    {/* Approval completes onboarding (creates the profile and marks the
+                        account verified), so it is available for every pending registration. */}
+                    <Button size="sm" onClick={() => setSelected(reg)} disabled={approve.isPending}>
                       <UserPlus className="h-4 w-4" /> Approve
                     </Button>
                   </li>

@@ -187,30 +187,45 @@ class StudentApprovalIntegrationTest {
     }
 
     @Test
-    void approveWithoutEmailVerification_returns422_andCreatesNoProfile() throws Exception {
+    void registerApproveLogin_withoutPriorVerification_succeeds() throws Exception {
+        // Workflow B: a self-registered student is onboarded entirely by admin approval,
+        // with no separate email-verification step.
         String officer = tokenFor("officer6@test.com", Role.ROLE_PLACEMENT_OFFICER);
         String email = "unverified@test.com";
         UUID userId = register(email); // registration leaves emailVerified = false
         assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isFalse();
 
+        // Shows up as pending.
+        mvc.perform(get("/api/students/pending").header("Authorization", "Bearer " + officer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.email == '" + email + "')]").exists());
+
+        // Approve → profile created even though the email was never verified.
         mvc.perform(post("/api/students/approvals/" + userId).header("Authorization", "Bearer " + officer)
                         .contentType(JSON)
                         .content(mapper.writeValueAsString(new StudentApprovalRequest("CS2021021", null, 1))))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userEmail").value(email));
 
-        // The account stays pending — no profile was created, and it can't log in yet
-        // (login rejects the unverified email with 403).
-        assertThat(studentRepo.count()).isZero();
+        // Approval completed onboarding: the account is now verified and no longer pending.
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
+        mvc.perform(get("/api/students/pending").header("Authorization", "Bearer " + officer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.email == '" + email + "')]").doesNotExist());
+
+        // And the student can log in immediately.
         mvc.perform(post("/auth/login").contentType(JSON)
                         .content(mapper.writeValueAsString(new LoginRequest(email, PASSWORD))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
     }
 
     @Test
-    void approval_linksProfileToUser_andLeavesAuthIdentityIntact() throws Exception {
+    void approval_marksAccountVerified_andLinksProfile() throws Exception {
         String officer = tokenFor("officer7@test.com", Role.ROLE_PLACEMENT_OFFICER);
-        String email = "verified.student@test.com";
-        UUID userId = user(email, Role.ROLE_STUDENT).getId(); // verified
+        String email = "onboard.me@test.com";
+        UUID userId = register(email); // unverified after registration
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isFalse();
 
         mvc.perform(post("/api/students/approvals/" + userId).header("Authorization", "Bearer " + officer)
                         .contentType(JSON)
@@ -219,8 +234,8 @@ class StudentApprovalIntegrationTest {
                 .andExpect(jsonPath("$.userId").value(userId.toString()))
                 .andExpect(jsonPath("$.currentYear").value(3));
 
-        // Approval authorizes and links a Student profile to the account — it never mutates
-        // the auth identity (role / verification stay exactly as they were).
+        // Approval completes onboarding atomically: the email is marked verified and a
+        // Student profile is linked to the (still ROLE_STUDENT) account.
         AppUser reloaded = userRepo.findByEmail(email).orElseThrow();
         assertThat(reloaded.isEmailVerified()).isTrue();
         assertThat(reloaded.getRole()).isEqualTo(Role.ROLE_STUDENT);

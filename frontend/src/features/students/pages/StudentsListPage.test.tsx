@@ -100,13 +100,12 @@ describe('StudentsListPage — pending registrations', () => {
     expect(screen.queryByText('Pending Registrations')).not.toBeInTheDocument()
   })
 
-  it('disables Approve until the registration has verified its email', async () => {
+  it('allows approving an unverified registration (approval completes onboarding)', async () => {
     stub({ pendingList: [pending({ emailVerified: false })] })
     renderPage()
 
     expect(await screen.findByText('Jane Doe')).toBeInTheDocument()
-    expect(screen.getByText(/awaiting email verification/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled()
   })
 })
 
