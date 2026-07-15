@@ -2,6 +2,7 @@ package com.college.placement.modules.student.service;
 
 import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
+import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.domain.Skill;
 import com.college.placement.modules.student.domain.Student;
@@ -32,15 +33,18 @@ public class StudentService {
     private final BranchService branchService;
     private final SkillService skillService;
     private final EventPublisher eventPublisher;
+    private final AppUserRepository appUserRepository;
 
     public StudentService(StudentRepository studentRepository,
                           BranchService branchService,
                           SkillService skillService,
-                          EventPublisher eventPublisher) {
+                          EventPublisher eventPublisher,
+                          AppUserRepository appUserRepository) {
         this.studentRepository = studentRepository;
         this.branchService = branchService;
         this.skillService = skillService;
         this.eventPublisher = eventPublisher;
+        this.appUserRepository = appUserRepository;
     }
 
     @Transactional
@@ -65,11 +69,21 @@ public class StudentService {
     }
 
     /**
-     * Approve a pending student registration: create the profile for an existing
-     * {@code ROLE_STUDENT} account and link it. Delegates the actual creation (dedup
-     * checks, persistence, {@code StudentCreatedEvent}) to {@link #createStudent} so the
-     * approval path and {@code POST /api/students} share one code path. The profile's
-     * existence is itself the approval marker — no separate request entity is tracked.
+     * Approve a pending student registration — the single step that completes onboarding.
+     * Officer approval is the trusted gate: it both authorizes the account and creates and
+     * links its {@code Student} profile (delegated to {@link #createStudent}, so the approval
+     * path and {@code POST /api/students} share one code path — dedup checks, persistence,
+     * {@code StudentCreatedEvent}). The profile's existence is itself the approval marker; no
+     * separate request entity is tracked, so once the profile exists the account leaves the
+     * pending list.
+     *
+     * <p>Because approval completes onboarding, it also marks the account's email verified —
+     * atomically, in this same transaction. {@code AuthService.login} enforces
+     * {@code emailVerified}, so setting it here is exactly what lets an approved student sign
+     * in immediately without any further step. This is an authorized administrative action,
+     * not a bypass: login still validates the flag; approval legitimately sets it. If profile
+     * creation fails (e.g. duplicate roll number) the whole transaction rolls back, including
+     * the verification flag, so the account never ends up half-onboarded.
      */
     @Transactional
     public Student approveRegistration(AppUser user, String rollNumber, UUID branchId, int currentYear) {
@@ -80,6 +94,10 @@ public class StudentService {
         if (studentRepository.existsByUser(user)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This registration has already been approved");
+        }
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true);
+            appUserRepository.save(user);
         }
         return createStudent(user, rollNumber, branchId, currentYear);
     }

@@ -106,6 +106,7 @@ export { LoadingOverlay } from './loading-overlay'
 
 // Upload
 export { FileUpload } from './file-upload'
+export { FileUploadField } from './file-upload-field'
 
 // Error handling
 export { ErrorBoundary } from './error-boundary'

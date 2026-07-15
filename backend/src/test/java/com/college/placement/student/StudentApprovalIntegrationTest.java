@@ -3,25 +3,34 @@ package com.college.placement.student;
 import com.college.placement.modules.auth.domain.AppUser;
 import com.college.placement.modules.auth.domain.Role;
 import com.college.placement.modules.auth.dto.LoginRequest;
+import com.college.placement.modules.auth.dto.RegisterRequest;
 import com.college.placement.modules.auth.dto.TokenResponse;
 import com.college.placement.modules.auth.repository.AppUserRepository;
 import com.college.placement.modules.auth.repository.RefreshTokenRepository;
+import com.college.placement.modules.notification.domain.NotificationHistory;
+import com.college.placement.modules.notification.repository.NotificationHistoryRepository;
 import com.college.placement.modules.student.dto.StudentApprovalRequest;
 import com.college.placement.modules.student.repository.StudentRepository;
+import com.college.placement.support.DatabaseCleaner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.Comparator;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,19 +46,21 @@ class StudentApprovalIntegrationTest {
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
     private static final String PASSWORD = "password123";
+    private static final Pattern TOKEN = Pattern.compile("token=([A-Za-z0-9_-]+)");
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper mapper;
     @Autowired AppUserRepository userRepo;
     @Autowired StudentRepository studentRepo;
     @Autowired RefreshTokenRepository refreshTokenRepo;
+    @Autowired NotificationHistoryRepository notificationRepo;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired DatabaseCleaner databaseCleaner;
 
     @BeforeEach
     void clean() {
-        studentRepo.deleteAll();
-        refreshTokenRepo.deleteAll();
-        userRepo.deleteAll();
+        // FK-safe wipe of the shared H2 context (students before app_users, etc.).
+        databaseCleaner.clean();
     }
 
     @Test
@@ -148,7 +159,110 @@ class StudentApprovalIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void registerVerifyApproveLogin_succeeds() throws Exception {
+        String officer = tokenFor("officer5@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        String email = "arjun.mehta@test.com";
+        UUID userId = register(email);
+
+        // Verify the account through the real endpoint (student proves email ownership).
+        String token = extractToken(email, "Verify your email");
+        mvc.perform(post("/auth/verify-email/confirm").contentType(JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
+
+        // Approve → profile created.
+        mvc.perform(post("/api/students/approvals/" + userId).header("Authorization", "Bearer " + officer)
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new StudentApprovalRequest("CS2021020", null, 1))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userEmail").value(email));
+
+        // The student can now log in (verified + approved).
+        mvc.perform(post("/auth/login").contentType(JSON)
+                        .content(mapper.writeValueAsString(new LoginRequest(email, PASSWORD))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void registerApproveLogin_withoutPriorVerification_succeeds() throws Exception {
+        // Workflow B: a self-registered student is onboarded entirely by admin approval,
+        // with no separate email-verification step.
+        String officer = tokenFor("officer6@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        String email = "unverified@test.com";
+        UUID userId = register(email); // registration leaves emailVerified = false
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isFalse();
+
+        // Shows up as pending.
+        mvc.perform(get("/api/students/pending").header("Authorization", "Bearer " + officer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.email == '" + email + "')]").exists());
+
+        // Approve → profile created even though the email was never verified.
+        mvc.perform(post("/api/students/approvals/" + userId).header("Authorization", "Bearer " + officer)
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new StudentApprovalRequest("CS2021021", null, 1))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userEmail").value(email));
+
+        // Approval completed onboarding: the account is now verified and no longer pending.
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isTrue();
+        mvc.perform(get("/api/students/pending").header("Authorization", "Bearer " + officer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.email == '" + email + "')]").doesNotExist());
+
+        // And the student can log in immediately.
+        mvc.perform(post("/auth/login").contentType(JSON)
+                        .content(mapper.writeValueAsString(new LoginRequest(email, PASSWORD))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+    }
+
+    @Test
+    void approval_marksAccountVerified_andLinksProfile() throws Exception {
+        String officer = tokenFor("officer7@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        String email = "onboard.me@test.com";
+        UUID userId = register(email); // unverified after registration
+        assertThat(userRepo.findByEmail(email).orElseThrow().isEmailVerified()).isFalse();
+
+        mvc.perform(post("/api/students/approvals/" + userId).header("Authorization", "Bearer " + officer)
+                        .contentType(JSON)
+                        .content(mapper.writeValueAsString(new StudentApprovalRequest("CS2021022", null, 3))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(userId.toString()))
+                .andExpect(jsonPath("$.currentYear").value(3));
+
+        // Approval completes onboarding atomically: the email is marked verified and a
+        // Student profile is linked to the (still ROLE_STUDENT) account.
+        AppUser reloaded = userRepo.findByEmail(email).orElseThrow();
+        assertThat(reloaded.isEmailVerified()).isTrue();
+        assertThat(reloaded.getRole()).isEqualTo(Role.ROLE_STUDENT);
+        assertThat(studentRepo.findByUser(reloaded)).isPresent();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private UUID register(String email) throws Exception {
+        mvc.perform(post("/auth/register").contentType(JSON)
+                        .content(mapper.writeValueAsString(new RegisterRequest(email, PASSWORD, Role.ROLE_STUDENT))))
+                .andExpect(status().isCreated());
+        return userRepo.findByEmail(email).orElseThrow().getId();
+    }
+
+    /** Reads the token embedded in the most recent notification of the given subject. */
+    private String extractToken(String email, String subject) {
+        AppUser user = userRepo.findByEmail(email).orElseThrow();
+        NotificationHistory history = notificationRepo.findByUser(user, PageRequest.of(0, 20))
+                .getContent().stream()
+                .filter(h -> subject.equals(h.getSubject()))
+                .max(Comparator.comparing(NotificationHistory::getCreatedAt))
+                .orElseThrow(() -> new AssertionError("No notification with subject: " + subject));
+        Matcher m = TOKEN.matcher(history.getBody());
+        assertThat(m.find()).as("verification token present in email body").isTrue();
+        return m.group(1);
+    }
 
     private AppUser user(String email, Role role) {
         AppUser u = new AppUser();

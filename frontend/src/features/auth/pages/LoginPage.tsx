@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { PasswordInput } from '@/shared/ui/password-input'
@@ -23,6 +23,11 @@ export default function LoginPage() {
 
   const errorMessage = error ? normalizeApiError(error).message : null
 
+  // A notice passed via navigation state (e.g. after successful registration,
+  // which does not auto-authenticate and redirects here to sign in).
+  const location = useLocation()
+  const notice = (location.state as { notice?: string } | null)?.notice ?? null
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -31,6 +36,13 @@ export default function LoginPage() {
           Enter your credentials to access your account
         </p>
       </div>
+
+      {notice && !errorMessage && (
+        <Alert className="flex items-start gap-2">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span className="text-sm">{notice}</span>
+        </Alert>
+      )}
 
       {errorMessage && (
         <Alert variant="destructive" className="flex items-start gap-2">

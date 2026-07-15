@@ -99,6 +99,14 @@ describe('StudentsListPage — pending registrations', () => {
     // ...but the pending section is absent.
     expect(screen.queryByText('Pending Registrations')).not.toBeInTheDocument()
   })
+
+  it('allows approving an unverified registration (approval completes onboarding)', async () => {
+    stub({ pendingList: [pending({ emailVerified: false })] })
+    renderPage()
+
+    expect(await screen.findByText('Jane Doe')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled()
+  })
 })
 
 describe('StudentsListPage — approve flow', () => {

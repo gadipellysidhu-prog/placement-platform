@@ -10,5 +10,15 @@ export {
   type RenderWithProvidersResult,
 } from './render'
 export { server } from './msw/server'
-export { handlers, mockStudentUser, mockOfficerUser, mockTokens } from './msw/handlers'
+export {
+  handlers,
+  mockStudentUser,
+  mockOfficerUser,
+  mockTokens,
+  mockStudentProfile,
+  mockFileResponse,
+  mockCertificate,
+  mockOffer,
+  pageOf,
+} from './msw/handlers'
 export { API_BASE_URL } from './constants'

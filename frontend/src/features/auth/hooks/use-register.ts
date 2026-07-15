@@ -1,30 +1,28 @@
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '@/lib/api/auth.api'
-import { useAuthStore } from '@/stores/auth.store'
 import { ROUTES } from '@/constants/routes'
 import type { RegisterFormValues } from '../schemas/auth.schemas'
 
+/**
+ * Registers a new student account.
+ *
+ * The backend issues NO JWT on registration — the account starts unverified and
+ * cannot sign in until its email is verified / an administrator approves it. So
+ * this hook must NOT attempt to auto-authenticate: it submits the registration and
+ * sends the user to the login page with the backend's confirmation message. The
+ * previous implementation assumed registration returned tokens, stored `undefined`,
+ * and then failed the follow-up `/me` call — which surfaced as a bogus "tokens not
+ * verified" error and a forced redirect to /login.
+ */
 export function useRegister() {
-  const { setAuth } = useAuthStore()
   const navigate = useNavigate()
 
   return useMutation({
-    mutationFn: async (values: RegisterFormValues) => {
-      const tokens = await authApi.register({ ...values, role: 'ROLE_STUDENT' })
-      // Store access token BEFORE calling /me so the Bearer header is attached.
-      sessionStorage.setItem('__access_token__', tokens.accessToken)
-      localStorage.setItem('__refresh_token__', tokens.refreshToken)
-      const user = await authApi.me()
-      return { tokens, user }
-    },
-    onSuccess: ({ tokens, user }) => {
-      setAuth(tokens.accessToken, tokens.refreshToken, user)
-      navigate(ROUTES.DASHBOARD, { replace: true })
-    },
-    onError: () => {
-      sessionStorage.removeItem('__access_token__')
-      localStorage.removeItem('__refresh_token__')
+    mutationFn: (values: RegisterFormValues) =>
+      authApi.register({ ...values, role: 'ROLE_STUDENT' }),
+    onSuccess: (result) => {
+      navigate(ROUTES.LOGIN, { replace: true, state: { notice: result.message } })
     },
   })
 }
