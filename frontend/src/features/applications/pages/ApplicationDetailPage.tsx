@@ -12,6 +12,7 @@ import { ROUTES } from '@/constants/routes'
 import { usePermission } from '@/shared/hooks/use-permission'
 import { formatDateTime } from '@/utils/format'
 import type { JobApplicationResponse } from '@/lib/api'
+import { CreateOfferDialog } from '@/features/offers/components/CreateOfferDialog'
 import { ApplicationTimeline } from '../components/ApplicationTimeline'
 import { StatusTransition } from '../components/StatusTransition'
 import { WithdrawAction } from '../components/WithdrawAction'
@@ -54,6 +55,14 @@ function OfficerApplicationDetail({ id }: { id: string }) {
         <>
           <p className="text-sm text-muted-foreground">Move this application to its next stage.</p>
           <StatusTransition application={data} />
+          {data.status === 'OFFERED' && (
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-sm text-muted-foreground">
+                This application is offered — extend a formal placement offer.
+              </p>
+              <CreateOfferDialog applicationId={data.id} label={data.studentRollNumber} />
+            </div>
+          )}
         </>
       }
     />

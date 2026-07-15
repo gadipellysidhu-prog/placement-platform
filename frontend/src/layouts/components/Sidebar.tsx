@@ -6,6 +6,7 @@ import {
   Briefcase,
   FileCheck2,
   Award,
+  Gift,
   GitBranch,
   Sparkles,
   UserCircle,
@@ -47,6 +48,12 @@ const NAV_ITEMS: NavItem[] = [
     allowedRoles: [ROLES.STUDENT],
   },
   {
+    label: 'My Offers',
+    href: ROUTES.STUDENT.MY_OFFERS,
+    icon: Gift,
+    allowedRoles: [ROLES.STUDENT],
+  },
+  {
     label: 'My Certificates',
     href: ROUTES.STUDENT.MY_CERTIFICATES,
     icon: Award,
@@ -69,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Applications',
     href: ROUTES.OFFICER.APPLICATIONS,
     icon: FileCheck2,
+    allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
+  },
+  {
+    label: 'Offers',
+    href: ROUTES.OFFICER.OFFERS,
+    icon: Gift,
     allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
   },
   {

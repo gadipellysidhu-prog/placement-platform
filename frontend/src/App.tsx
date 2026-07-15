@@ -60,6 +60,16 @@ const ApplicationDetailPage = lazy(
   () => import('@/features/applications/pages/ApplicationDetailPage'),
 )
 
+// Certificates feature pages
+const MyCertificatesPage = lazy(() => import('@/features/certificates/pages/MyCertificatesPage'))
+const CertificateVerificationPage = lazy(
+  () => import('@/features/certificates/pages/CertificateVerificationPage'),
+)
+
+// Offers feature pages
+const MyOffersPage = lazy(() => import('@/features/offers/pages/MyOffersPage'))
+const OffersManagementPage = lazy(() => import('@/features/offers/pages/OffersManagementPage'))
+
 function AppRoutes(): React.ReactElement {
   return (
     <Suspense fallback={<LoadingPage />}>
@@ -103,6 +113,10 @@ function AppRoutes(): React.ReactElement {
               element={<ApplicationDetailPage />}
             />
 
+            {/* Certificates & Offers — student views (own submissions / own offers). */}
+            <Route path={ROUTES.STUDENT.MY_CERTIFICATES} element={<MyCertificatesPage />} />
+            <Route path={ROUTES.STUDENT.MY_OFFERS} element={<MyOffersPage />} />
+
             {/* Officer/Admin routes — Students */}
             <Route path={ROUTES.OFFICER.STUDENTS} element={<StudentsListPage />} />
             <Route path={`${ROUTES.OFFICER.STUDENTS}/:id`} element={<StudentDetailPage />} />
@@ -136,6 +150,10 @@ function AppRoutes(): React.ReactElement {
                 path={`${ROUTES.OFFICER.APPLICATIONS}/:id`}
                 element={<ApplicationDetailPage />}
               />
+
+              {/* Certificate verification + offers management (officer/admin). */}
+              <Route path={ROUTES.OFFICER.CERTIFICATES} element={<CertificateVerificationPage />} />
+              <Route path={ROUTES.OFFICER.OFFERS} element={<OffersManagementPage />} />
             </Route>
           </Route>
         </Route>

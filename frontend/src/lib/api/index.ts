@@ -49,4 +49,4 @@ export type {
 } from './skills.api'
 export type { JobIntelligenceRun, RunStatus, StartRunRequest } from './job-intelligence.api'
 export type { DashboardSummary } from './dashboard.api'
-export type { FileResponse } from './files.api'
+export type { FileResponse, FileScanStatus, FileDownloadLinkResponse } from './files.api'
