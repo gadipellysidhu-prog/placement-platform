@@ -46,8 +46,11 @@ export const authApi = {
   login: (data: LoginRequest) =>
     apiClient.post<AuthTokens>('/auth/login', data).then((r) => r.data),
 
+  // Registration issues NO tokens: the backend creates an unverified account and
+  // returns a MessageResponse. The account cannot sign in until it is verified /
+  // approved, so callers must not treat this as an authenticated session.
   register: (data: RegisterRequest) =>
-    apiClient.post<AuthTokens>('/auth/register', data).then((r) => r.data),
+    apiClient.post<MessageResponse>('/auth/register', data).then((r) => r.data),
 
   refresh: (data: RefreshRequest) =>
     apiClient.post<AuthTokens>('/auth/refresh', data).then((r) => r.data),
