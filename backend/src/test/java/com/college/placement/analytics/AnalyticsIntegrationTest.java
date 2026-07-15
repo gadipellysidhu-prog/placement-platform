@@ -13,6 +13,7 @@ import com.college.placement.modules.company.repository.JobPostingRepository;
 import com.college.placement.modules.placement.domain.ApplicationStatus;
 import com.college.placement.modules.placement.domain.JobApplication;
 import com.college.placement.modules.placement.repository.JobApplicationRepository;
+import com.college.placement.modules.placement.repository.OfferRepository;
 import com.college.placement.modules.student.domain.Branch;
 import com.college.placement.modules.student.domain.Student;
 import com.college.placement.modules.student.domain.StudentStatus;
@@ -59,11 +60,18 @@ class AnalyticsIntegrationTest {
     @Autowired CompanyRepository companyRepo;
     @Autowired JobPostingRepository jobPostingRepo;
     @Autowired JobApplicationRepository applicationRepo;
+    @Autowired OfferRepository offerRepo;
 
     private final AtomicInteger rollSeq = new AtomicInteger(1000);
 
     @BeforeEach
     void clean() {
+        // Offers reference job applications (offers.application_id → job_applications.id),
+        // so they must be cleared first. Integration tests share one cached H2 datasource,
+        // so offer rows left by an earlier class would otherwise block this deleteAll with a
+        // referential-integrity violation. Mirrors the offer→application order used by every
+        // other integration test and by DatabaseCleaner.
+        offerRepo.deleteAll();
         applicationRepo.deleteAll();
         studentRepo.deleteAll();
         jobPostingRepo.deleteAll();
