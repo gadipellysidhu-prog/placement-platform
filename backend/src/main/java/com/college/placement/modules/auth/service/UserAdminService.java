@@ -28,7 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -85,6 +90,30 @@ public class UserAdminService {
     public AppUser getById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    /**
+     * Last recorded activity for the given users, keyed by user id. Resolved in a
+     * single grouped query rather than per row, so listing a page costs one extra
+     * query regardless of page size. Users with no activity on record are absent
+     * from the map — callers report that as unknown, not as a date.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Instant> lastActivityFor(Collection<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Instant> result = new HashMap<>();
+        for (Object[] row : refreshTokenRepository.findLastActivityByUserIds(userIds)) {
+            result.put((UUID) row[0], (Instant) row[1]);
+        }
+        return result;
+    }
+
+    /** Single-user variant of {@link #lastActivityFor(Collection)}; null when unknown. */
+    @Transactional(readOnly = true)
+    public Instant lastActivityFor(UUID userId) {
+        return lastActivityFor(List.of(userId)).get(userId);
     }
 
     // ── Account state ────────────────────────────────────────────────────────
