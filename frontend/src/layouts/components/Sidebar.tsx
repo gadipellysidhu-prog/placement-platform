@@ -10,6 +10,9 @@ import {
   GitBranch,
   Sparkles,
   UserCircle,
+  ShieldCheck,
+  Settings2,
+  ScrollText,
   CalendarRange,
   ChevronLeft,
   X,
@@ -107,12 +110,36 @@ const NAV_ITEMS: NavItem[] = [
     icon: GitBranch,
     allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
   },
+
+  // Administration — admin only, mirroring the backend's hasRole('ADMIN') on /api/admin/**.
+  {
+    label: 'Users',
+    href: ROUTES.ADMIN.USERS,
+    icon: ShieldCheck,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
+  {
+    label: 'Settings',
+    href: ROUTES.ADMIN.SETTINGS,
+    icon: Settings2,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
+  {
+    label: 'Audit Logs',
+    href: ROUTES.ADMIN.AUDIT_LOGS,
+    icon: ScrollText,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
   {
     // Admin-only: creating, updating and activating a year all require ADMIN.
     label: 'Academic Years',
     href: ROUTES.ADMIN.ACADEMIC_YEARS,
     icon: CalendarRange,
     allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
   },
 ]
 

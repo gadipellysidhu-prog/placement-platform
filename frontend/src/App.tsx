@@ -70,6 +70,12 @@ const CertificateVerificationPage = lazy(
 const MyOffersPage = lazy(() => import('@/features/offers/pages/MyOffersPage'))
 const OffersManagementPage = lazy(() => import('@/features/offers/pages/OffersManagementPage'))
 
+// Administration feature pages (admin only)
+const UsersListPage = lazy(() => import('@/features/admin/pages/UsersListPage'))
+const UserDetailPage = lazy(() => import('@/features/admin/pages/UserDetailPage'))
+const AdminSettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
+const AuditLogsPage = lazy(() => import('@/features/admin/pages/AuditLogsPage'))
+
 // Catalog administration pages
 const BranchesPage = lazy(() => import('@/features/admin/pages/BranchesPage'))
 const SkillsPage = lazy(() => import('@/features/admin/pages/SkillsPage'))
