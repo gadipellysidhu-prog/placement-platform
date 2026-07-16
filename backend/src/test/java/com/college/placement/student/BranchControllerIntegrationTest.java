@@ -120,6 +120,28 @@ class BranchControllerIntegrationTest {
     }
 
     @Test
+    void list_hidesDeactivatedByDefault_butReturnsThemWhenActiveOnlyIsFalse() throws Exception {
+        TokenResponse officer = createPrivilegedUser("officer@test.com", Role.ROLE_PLACEMENT_OFFICER);
+        String id = createBranch(officer, "Retired", "RET");
+        mvc.perform(post("/api/branches/" + id + "/deactivate")
+                        .header("Authorization", "Bearer " + officer.accessToken()))
+                .andExpect(status().isOk());
+
+        // Default is unchanged: existing callers keep seeing active branches only.
+        mvc.perform(get("/api/branches")
+                        .header("Authorization", "Bearer " + officer.accessToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        // Administration opts in, so a deactivated branch stays reachable for reactivation.
+        mvc.perform(get("/api/branches").param("activeOnly", "false")
+                        .header("Authorization", "Bearer " + officer.accessToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Retired"))
+                .andExpect(jsonPath("$[0].active").value(false));
+    }
+
+    @Test
     void getById_notFound_returns404() throws Exception {
         TokenResponse student = registerStudent("student@test.com");
 

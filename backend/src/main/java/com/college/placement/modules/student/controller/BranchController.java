@@ -36,10 +36,15 @@ public class BranchController {
 
     @GetMapping
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "List all active branches")
-    public ResponseEntity<List<BranchResponse>> list() {
-        return ResponseEntity.ok(branchService.getActiveBranches().stream()
-                .map(BranchResponse::from).toList());
+    @Operation(summary = "List branches. Active-only by default; pass activeOnly=false for the "
+            + "full catalogue including deactivated branches (administration).")
+    public ResponseEntity<List<BranchResponse>> list(
+            @RequestParam(defaultValue = "true") boolean activeOnly) {
+        // Defaulting to true preserves the existing contract for every current caller
+        // (selectors, eligibility pickers); administration opts in to the full list so
+        // a deactivated branch stays reachable for reactivation.
+        var branches = activeOnly ? branchService.getActiveBranches() : branchService.getAll();
+        return ResponseEntity.ok(branches.stream().map(BranchResponse::from).toList());
     }
 
     @GetMapping("/{id}")
