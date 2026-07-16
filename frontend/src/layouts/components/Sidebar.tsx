@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Settings2,
   ScrollText,
+  CalendarRange,
   ChevronLeft,
   X,
 } from 'lucide-react'
@@ -129,6 +130,14 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Audit Logs',
     href: ROUTES.ADMIN.AUDIT_LOGS,
     icon: ScrollText,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
+  {
+    // Admin-only: creating, updating and activating a year all require ADMIN.
+    label: 'Academic Years',
+    href: ROUTES.ADMIN.ACADEMIC_YEARS,
+    icon: CalendarRange,
     allowedRoles: [ROLES.ADMIN],
     section: ADMINISTRATION,
   },

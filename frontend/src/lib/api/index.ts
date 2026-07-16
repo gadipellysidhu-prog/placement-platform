@@ -13,6 +13,7 @@ export { filesApi } from './files.api'
 export { adminUsersApi } from './admin-users.api'
 export { settingsApi } from './settings.api'
 export { auditLogsApi } from './audit-logs.api'
+export { academicYearsApi } from './academic-years.api'
 export { queryKeys } from './keys'
 export { normalizeApiError, getApiErrorMessage } from './error'
 
@@ -43,13 +44,27 @@ export type {
 } from './applications.api'
 export type { OfferResponse, CreateOfferRequest } from './offers.api'
 export type { CertificateResponse, CreateCertificateRequest } from './certificates.api'
-export type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from './branches.api'
+export type {
+  BranchResponse,
+  CreateBranchRequest,
+  UpdateBranchRequest,
+  ListBranchesParams,
+} from './branches.api'
 export type {
   SkillResponse,
   CreateSkillRequest,
   UpdateSkillRequest,
   SkillSearchResult,
+  SkillCreatedSource,
+  SkillAliasResponse,
+  CreateSkillAliasRequest,
+  ListSkillsParams,
 } from './skills.api'
+export type {
+  AcademicYearResponse,
+  CreateAcademicYearRequest,
+  UpdateAcademicYearRequest,
+} from './academic-years.api'
 export type { JobIntelligenceRun, RunStatus, StartRunRequest } from './job-intelligence.api'
 export type { DashboardSummary } from './dashboard.api'
 export type { FileResponse, FileScanStatus, FileDownloadLinkResponse } from './files.api'

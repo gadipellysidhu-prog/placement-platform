@@ -76,6 +76,11 @@ const UserDetailPage = lazy(() => import('@/features/admin/pages/UserDetailPage'
 const AdminSettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
 const AuditLogsPage = lazy(() => import('@/features/admin/pages/AuditLogsPage'))
 
+// Catalog administration pages
+const BranchesPage = lazy(() => import('@/features/admin/pages/BranchesPage'))
+const SkillsPage = lazy(() => import('@/features/admin/pages/SkillsPage'))
+const AcademicYearsPage = lazy(() => import('@/features/admin/pages/AcademicYearsPage'))
+
 function AppRoutes(): React.ReactElement {
   return (
     <Suspense fallback={<LoadingPage />}>
@@ -160,6 +165,17 @@ function AppRoutes(): React.ReactElement {
               {/* Certificate verification + offers management (officer/admin). */}
               <Route path={ROUTES.OFFICER.CERTIFICATES} element={<CertificateVerificationPage />} />
               <Route path={ROUTES.OFFICER.OFFERS} element={<OffersManagementPage />} />
+
+              {/* Catalogue administration. Branch and skill mutations require
+                  PLACEMENT_OFFICER (not ADMIN), so these sit at officer level. */}
+              <Route path={ROUTES.OFFICER.BRANCHES} element={<BranchesPage />} />
+              <Route path={ROUTES.OFFICER.SKILLS} element={<SkillsPage />} />
+            </Route>
+
+            {/* Academic years — every mutation requires ADMIN, so the management
+                screen is admin-only even though officers may read the years. */}
+            <Route element={<RoleRoute minimumRole={ROLES.ADMIN} />}>
+              <Route path={ROUTES.ADMIN.ACADEMIC_YEARS} element={<AcademicYearsPage />} />
             </Route>
 
             {/* Administration — admin only, mirroring @PreAuthorize("hasRole('ADMIN')")

@@ -56,6 +56,9 @@ export const ROUTES = {
     USER_DETAIL: (id: string) => `/dashboard/admin/users/${id}` as const,
     SETTINGS: '/dashboard/admin/settings',
     AUDIT_LOGS: '/dashboard/admin/audit-logs',
+    // Every mutation on /api/academic-years requires ADMIN (only the reads are open
+    // to officers), so the management screen itself is admin-only.
+    ACADEMIC_YEARS: '/dashboard/admin/academic-years',
   },
 
   // Error
