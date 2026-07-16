@@ -10,6 +10,7 @@ import {
   GitBranch,
   Sparkles,
   UserCircle,
+  CalendarRange,
   ChevronLeft,
   X,
 } from 'lucide-react'
@@ -101,6 +102,13 @@ const NAV_ITEMS: NavItem[] = [
     href: ROUTES.OFFICER.BRANCHES,
     icon: GitBranch,
     allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
+  },
+  {
+    // Admin-only: creating, updating and activating a year all require ADMIN.
+    label: 'Academic Years',
+    href: ROUTES.ADMIN.ACADEMIC_YEARS,
+    icon: CalendarRange,
+    allowedRoles: [ROLES.ADMIN],
   },
 ]
 

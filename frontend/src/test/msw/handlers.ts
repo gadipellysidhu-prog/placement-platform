@@ -1,7 +1,15 @@
 import { http, HttpResponse } from 'msw'
 import { API_BASE_URL } from '../constants'
 import type { AuthTokens, User, Page } from '@/types'
-import type { StudentResponse, CertificateResponse, OfferResponse, FileResponse } from '@/lib/api'
+import type {
+  StudentResponse,
+  CertificateResponse,
+  OfferResponse,
+  FileResponse,
+  BranchResponse,
+  SkillResponse,
+  AcademicYearResponse,
+} from '@/lib/api'
 
 /** Canonical fixtures reused across tests so assertions stay in sync with handlers. */
 export const mockStudentUser: User = {
@@ -76,6 +84,73 @@ export const mockOffer: OfferResponse = {
   joiningDate: '2026-07-01',
   createdAt: '2026-02-01T00:00:00Z',
   updatedAt: '2026-02-01T00:00:00Z',
+}
+
+export const mockBranch: BranchResponse = {
+  id: 'branch-1',
+  name: 'Computer Science',
+  code: 'CS',
+  description: 'CS and engineering',
+  active: true,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+/** A deactivated branch — only reachable via activeOnly=false. */
+export const mockInactiveBranch: BranchResponse = {
+  id: 'branch-2',
+  name: 'Retired Branch',
+  code: 'RET',
+  description: null,
+  active: false,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+export const mockSkill: SkillResponse = {
+  id: 'skill-1',
+  name: 'Java',
+  category: 'Programming',
+  verified: true,
+  description: null,
+  parentCategory: null,
+  subcategory: null,
+  popularityScore: 90,
+  industryTags: null,
+  active: true,
+  createdSource: 'SEED',
+  aiConfidence: null,
+  aliases: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+export const mockUnverifiedSkill: SkillResponse = {
+  ...mockSkill,
+  id: 'skill-2',
+  name: 'Rust',
+  verified: false,
+  createdSource: 'AI',
+  popularityScore: 10,
+}
+
+export const mockAcademicYear: AcademicYearResponse = {
+  id: 'year-1',
+  label: '2026-27',
+  startDate: '2026-07-01',
+  endDate: '2027-06-30',
+  active: true,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+export const mockInactiveAcademicYear: AcademicYearResponse = {
+  ...mockAcademicYear,
+  id: 'year-2',
+  label: '2025-26',
+  startDate: '2025-07-01',
+  endDate: '2026-06-30',
+  active: false,
 }
 
 /** Wrap a content array in a minimal Spring Data Page envelope. */
@@ -177,5 +252,57 @@ export const handlers = [
   ),
   http.post(`${API_BASE_URL}/api/offers/:id/expire`, () =>
     HttpResponse.json({ ...mockOffer, status: 'EXPIRED' }),
+  ),
+
+  // ── Branches ─────────────────────────────────────────────────────────────
+  // Mirrors the server default: active-only unless activeOnly=false is passed.
+  http.get(`${API_BASE_URL}/api/branches`, ({ request }) => {
+    const activeOnly = new URL(request.url).searchParams.get('activeOnly') !== 'false'
+    return HttpResponse.json(activeOnly ? [mockBranch] : [mockBranch, mockInactiveBranch])
+  }),
+  http.get(`${API_BASE_URL}/api/branches/:id`, () => HttpResponse.json(mockBranch)),
+  http.post(`${API_BASE_URL}/api/branches`, () => HttpResponse.json(mockBranch, { status: 201 })),
+  http.put(`${API_BASE_URL}/api/branches/:id`, () => HttpResponse.json(mockBranch)),
+  http.post(`${API_BASE_URL}/api/branches/:id/activate`, () =>
+    HttpResponse.json({ ...mockInactiveBranch, active: true }),
+  ),
+  http.post(`${API_BASE_URL}/api/branches/:id/deactivate`, () =>
+    HttpResponse.json({ ...mockBranch, active: false }),
+  ),
+
+  // ── Skills ───────────────────────────────────────────────────────────────
+  http.get(`${API_BASE_URL}/api/skills`, () => HttpResponse.json([mockSkill, mockUnverifiedSkill])),
+  http.get(`${API_BASE_URL}/api/skills/search`, () =>
+    HttpResponse.json([
+      {
+        id: mockSkill.id,
+        name: mockSkill.name,
+        category: mockSkill.category,
+        parentCategory: null,
+        popularityScore: 90,
+        matchType: 'EXACT',
+        score: 1,
+      },
+    ]),
+  ),
+  http.get(`${API_BASE_URL}/api/skills/:id`, () => HttpResponse.json(mockSkill)),
+  http.post(`${API_BASE_URL}/api/skills`, () => HttpResponse.json(mockSkill, { status: 201 })),
+  http.put(`${API_BASE_URL}/api/skills/:id`, () => HttpResponse.json(mockSkill)),
+  http.post(`${API_BASE_URL}/api/skills/:id/verify`, () =>
+    HttpResponse.json({ ...mockUnverifiedSkill, verified: true }),
+  ),
+
+  // ── Academic years ───────────────────────────────────────────────────────
+  http.get(`${API_BASE_URL}/api/academic-years`, () =>
+    HttpResponse.json(pageOf([mockAcademicYear, mockInactiveAcademicYear])),
+  ),
+  http.get(`${API_BASE_URL}/api/academic-years/active`, () => HttpResponse.json(mockAcademicYear)),
+  http.get(`${API_BASE_URL}/api/academic-years/:id`, () => HttpResponse.json(mockAcademicYear)),
+  http.post(`${API_BASE_URL}/api/academic-years`, () =>
+    HttpResponse.json(mockAcademicYear, { status: 201 }),
+  ),
+  http.put(`${API_BASE_URL}/api/academic-years/:id`, () => HttpResponse.json(mockAcademicYear)),
+  http.post(`${API_BASE_URL}/api/academic-years/:id/activate`, () =>
+    HttpResponse.json({ ...mockInactiveAcademicYear, active: true }),
   ),
 ]
