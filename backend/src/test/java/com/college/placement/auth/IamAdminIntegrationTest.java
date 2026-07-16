@@ -34,6 +34,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -207,6 +208,27 @@ class IamAdminIntegrationTest {
         mvc.perform(put("/api/admin/users/" + adminId + "/role").header("Authorization", "Bearer " + admin)
                         .contentType(JSON).content("{\"role\":\"ROLE_STUDENT\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    // ── Last activity ────────────────────────────────────────────────────────
+
+    @Test
+    void lastActivityAt_isDerivedFromLogin_andNullWhenNoActivityRecorded() throws Exception {
+        // adminToken() logs in, which mints a refresh token — the activity record.
+        String admin = adminToken("admin@iam.test");
+        // Created directly, never authenticated: no activity exists for this account.
+        verifiedUser("dormant@iam.test", Role.ROLE_STUDENT);
+
+        mvc.perform(get("/api/admin/users").param("query", "admin@iam.test")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].lastActivityAt").isNotEmpty());
+
+        // Reported as unknown rather than back-filled from createdAt/updatedAt.
+        mvc.perform(get("/api/admin/users").param("query", "dormant@iam.test")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].lastActivityAt").value(nullValue()));
     }
 
     // ── Authorization + audit + events ───────────────────────────────────────

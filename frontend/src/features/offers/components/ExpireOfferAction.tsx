@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Clock } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
-import { ConfirmDialog } from '@/features/job-postings/components/ConfirmDialog'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { getApiErrorMessage, type OfferResponse } from '@/lib/api'
 import { useToast } from '@/shared/hooks/use-toast'
 import { useExpireOffer } from '../hooks/use-offers'

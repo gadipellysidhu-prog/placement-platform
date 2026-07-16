@@ -10,6 +10,9 @@ import {
   GitBranch,
   Sparkles,
   UserCircle,
+  ShieldCheck,
+  Settings2,
+  ScrollText,
   ChevronLeft,
   X,
 } from 'lucide-react'
@@ -25,7 +28,11 @@ interface NavItem {
   href: string
   icon: React.ElementType
   allowedRoles?: Role[]
+  /** Groups the item under a labelled heading. Ungrouped items render first, unheaded. */
+  section?: string
 }
+
+const ADMINISTRATION = 'Administration'
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: ROUTES.DASHBOARD, icon: LayoutDashboard },
@@ -102,7 +109,64 @@ const NAV_ITEMS: NavItem[] = [
     icon: GitBranch,
     allowedRoles: [ROLES.PLACEMENT_OFFICER, ROLES.ADMIN],
   },
+
+  // Administration — admin only, mirroring the backend's hasRole('ADMIN') on /api/admin/**.
+  {
+    label: 'Users',
+    href: ROUTES.ADMIN.USERS,
+    icon: ShieldCheck,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
+  {
+    label: 'Settings',
+    href: ROUTES.ADMIN.SETTINGS,
+    icon: Settings2,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
+  {
+    label: 'Audit Logs',
+    href: ROUTES.ADMIN.AUDIT_LOGS,
+    icon: ScrollText,
+    allowedRoles: [ROLES.ADMIN],
+    section: ADMINISTRATION,
+  },
 ]
+
+interface NavLinkProps {
+  item: NavItem
+  pathname: string
+  collapsed: boolean
+  onNavigate: () => void
+}
+
+function NavLink({ item, pathname, collapsed, onNavigate }: NavLinkProps) {
+  const isActive =
+    item.href === ROUTES.DASHBOARD ? pathname === item.href : pathname.startsWith(item.href)
+  const Icon = item.icon
+
+  return (
+    <li>
+      <Link
+        to={item.href}
+        onClick={onNavigate}
+        aria-current={isActive ? 'page' : undefined}
+        title={collapsed ? item.label : undefined}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          isActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+          collapsed && 'justify-center px-2',
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!collapsed && <span className="truncate">{item.label}</span>}
+      </Link>
+    </li>
+  )
+}
 
 export function Sidebar() {
   const location = useLocation()
@@ -112,6 +176,17 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.allowedRoles || (user?.role && item.allowedRoles.includes(user.role)),
   )
+
+  // Ungrouped items keep their existing flat, unheaded listing; sectioned items follow
+  // under a heading. A section with nothing visible disappears entirely.
+  const ungrouped = visibleItems.filter((item) => !item.section)
+  const sections = visibleItems.reduce<Map<string, NavItem[]>>((acc, item) => {
+    if (!item.section) return acc
+    const existing = acc.get(item.section)
+    if (existing) existing.push(item)
+    else acc.set(item.section, [item])
+    return acc
+  }, new Map())
 
   return (
     <>
@@ -157,35 +232,39 @@ export function Sidebar() {
 
         <nav className="flex-1 overflow-y-auto p-2" aria-label="Primary">
           <ul className="space-y-1">
-            {visibleItems.map((item) => {
-              const isActive =
-                item.href === ROUTES.DASHBOARD
-                  ? location.pathname === item.href
-                  : location.pathname.startsWith(item.href)
-              const Icon = item.icon
-
-              return (
-                <li key={item.href}>
-                  <Link
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={sidebarCollapsed ? item.label : undefined}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-                      sidebarCollapsed && 'justify-center px-2',
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                </li>
-              )
-            })}
+            {ungrouped.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={location.pathname}
+                collapsed={sidebarCollapsed}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            ))}
           </ul>
+
+          {[...sections].map(([section, items]) => (
+            <div key={section} className="mt-4">
+              {sidebarCollapsed ? (
+                <div className="mx-2 mb-1 border-t border-border" role="presentation" />
+              ) : (
+                <h2 className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {section}
+                </h2>
+              )}
+              <ul className="space-y-1">
+                {items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    pathname={location.pathname}
+                    collapsed={sidebarCollapsed}
+                    onNavigate={() => setSidebarOpen(false)}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
       </aside>
     </>

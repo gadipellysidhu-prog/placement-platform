@@ -22,9 +22,9 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Lightweight confirmation modal built on the shared Dialog primitives. Every
- * job-posting lifecycle transition is routed through this so the officer confirms
- * intent before the mutation fires.
+ * Lightweight confirmation modal built on the shared Dialog primitives. Consequential
+ * or irreversible mutations are routed through this so the user confirms intent
+ * before the request fires.
  */
 export function ConfirmDialog({
   open,

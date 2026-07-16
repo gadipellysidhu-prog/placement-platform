@@ -10,6 +10,9 @@ export { skillsApi } from './skills.api'
 export { jobIntelligenceApi } from './job-intelligence.api'
 export { dashboardApi } from './dashboard.api'
 export { filesApi } from './files.api'
+export { adminUsersApi } from './admin-users.api'
+export { settingsApi } from './settings.api'
+export { auditLogsApi } from './audit-logs.api'
 export { queryKeys } from './keys'
 export { normalizeApiError, getApiErrorMessage } from './error'
 
@@ -50,3 +53,18 @@ export type {
 export type { JobIntelligenceRun, RunStatus, StartRunRequest } from './job-intelligence.api'
 export type { DashboardSummary } from './dashboard.api'
 export type { FileResponse, FileScanStatus, FileDownloadLinkResponse } from './files.api'
+export type {
+  AccountStatus,
+  AdminUserResponse,
+  ListAdminUsersParams,
+  InviteUserRequest,
+  AssignRoleRequest,
+  MessageResponse,
+} from './admin-users.api'
+export type {
+  SettingResponse,
+  SettingValueType,
+  SettingUpsertRequest,
+  ListSettingsParams,
+} from './settings.api'
+export type { AuditLogResponse, ListAuditLogsParams } from './audit-logs.api'

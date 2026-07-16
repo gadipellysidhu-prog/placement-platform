@@ -49,6 +49,15 @@ export const ROUTES = {
     BRANCHES: '/dashboard/manage/branches',
   },
 
+  // Administration routes — ADMIN only, mirroring the backend's
+  // @PreAuthorize("hasRole('ADMIN')") on /api/admin/**.
+  ADMIN: {
+    USERS: '/dashboard/admin/users',
+    USER_DETAIL: (id: string) => `/dashboard/admin/users/${id}` as const,
+    SETTINGS: '/dashboard/admin/settings',
+    AUDIT_LOGS: '/dashboard/admin/audit-logs',
+  },
+
   // Error
   FORBIDDEN: '/403',
   NOT_FOUND: '/404',
