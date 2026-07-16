@@ -22,6 +22,11 @@ export const mockOfficerUser: User = {
   role: 'ROLE_PLACEMENT_OFFICER',
 }
 
+export const mockAdminUser: User = {
+  email: 'admin@university.edu',
+  role: 'ROLE_ADMIN',
+}
+
 export const mockTokens: AuthTokens = {
   accessToken: 'mock-access-token',
   refreshToken: 'mock-refresh-token',

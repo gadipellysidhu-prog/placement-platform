@@ -12,6 +12,7 @@ type ApplicationStatus =
 type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
 type CertificateStatus = 'PENDING' | 'VERIFIED' | 'REJECTED'
 type JobPostingStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'CANCELLED'
+type AccountStatus = 'ACTIVE' | 'DISABLED' | 'LOCKED' | 'INVITED'
 
 type Status =
   | StudentStatus
@@ -20,6 +21,7 @@ type Status =
   | OfferStatus
   | CertificateStatus
   | JobPostingStatus
+  | AccountStatus
 
 const STATUS_CONFIG: Record<Status, { label: string; variant: BadgeProps['variant'] }> = {
   // Student status
@@ -54,6 +56,11 @@ const STATUS_CONFIG: Record<Status, { label: string; variant: BadgeProps['varian
   OPEN: { label: 'Open', variant: 'success' },
   CLOSED: { label: 'Closed', variant: 'outline' },
   CANCELLED: { label: 'Cancelled', variant: 'destructive' },
+
+  // Account status (ACTIVE is shared with student status above)
+  DISABLED: { label: 'Disabled', variant: 'secondary' },
+  LOCKED: { label: 'Locked', variant: 'destructive' },
+  INVITED: { label: 'Invited', variant: 'warning' },
 }
 
 interface StatusBadgeProps {
@@ -79,4 +86,5 @@ export type {
   OfferStatus,
   CertificateStatus,
   JobPostingStatus,
+  AccountStatus,
 }

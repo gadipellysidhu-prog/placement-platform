@@ -171,6 +171,15 @@ function AppRoutes(): React.ReactElement {
             <Route element={<RoleRoute minimumRole={ROLES.ADMIN} />}>
               <Route path={ROUTES.ADMIN.ACADEMIC_YEARS} element={<AcademicYearsPage />} />
             </Route>
+
+            {/* Administration — admin only, mirroring @PreAuthorize("hasRole('ADMIN')")
+                on /api/admin/**. An officer reaching these lands on 403. */}
+            <Route element={<RoleRoute minimumRole={ROLES.ADMIN} />}>
+              <Route path={ROUTES.ADMIN.USERS} element={<UsersListPage />} />
+              <Route path={`${ROUTES.ADMIN.USERS}/:id`} element={<UserDetailPage />} />
+              <Route path={ROUTES.ADMIN.SETTINGS} element={<AdminSettingsPage />} />
+              <Route path={ROUTES.ADMIN.AUDIT_LOGS} element={<AuditLogsPage />} />
+            </Route>
           </Route>
         </Route>
 

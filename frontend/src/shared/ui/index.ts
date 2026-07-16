@@ -110,3 +110,6 @@ export { FileUploadField } from './file-upload-field'
 
 // Error handling
 export { ErrorBoundary } from './error-boundary'
+
+// Confirmation
+export { ConfirmDialog } from './confirm-dialog'

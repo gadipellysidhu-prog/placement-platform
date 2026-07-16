@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/shared/ui/button'
-import { ConfirmDialog } from '@/features/job-postings/components/ConfirmDialog'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { getApiErrorMessage } from '@/lib/api'
 import type { JobApplicationResponse } from '@/lib/api'
 import { useWithdrawApplication } from '../hooks/use-applications'

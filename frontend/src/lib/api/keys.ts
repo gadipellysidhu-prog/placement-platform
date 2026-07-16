@@ -81,4 +81,21 @@ export const queryKeys = {
   dashboard: {
     summary: () => ['dashboard', 'summary'] as const,
   },
+
+  adminUsers: {
+    all: () => ['admin-users'] as const,
+    list: (params?: Record<string, unknown>) => ['admin-users', 'list', params] as const,
+    detail: (id: string) => ['admin-users', id] as const,
+  },
+
+  settings: {
+    all: () => ['settings'] as const,
+    list: (params?: Record<string, unknown>) => ['settings', 'list', params] as const,
+    detail: (id: string) => ['settings', id] as const,
+  },
+
+  auditLogs: {
+    all: () => ['audit-logs'] as const,
+    list: (params?: Record<string, unknown>) => ['audit-logs', 'list', params] as const,
+  },
 } as const
