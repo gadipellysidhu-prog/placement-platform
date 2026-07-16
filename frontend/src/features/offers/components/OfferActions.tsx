@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
-import { ConfirmDialog } from '@/features/job-postings/components/ConfirmDialog'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { formatCTC } from '@/utils/format'
 import { getApiErrorMessage, type OfferResponse } from '@/lib/api'
 import { useToast } from '@/shared/hooks/use-toast'
