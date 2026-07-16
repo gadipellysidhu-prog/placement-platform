@@ -22,8 +22,17 @@ export interface UpdateBranchRequest {
   description?: string
 }
 
+export interface ListBranchesParams {
+  /**
+   * Defaults to true server-side (active branches only). Administration passes false
+   * to include deactivated branches, which would otherwise be unreachable.
+   */
+  activeOnly?: boolean
+}
+
 export const branchesApi = {
-  list: () => apiClient.get<BranchResponse[]>('/api/branches').then((r) => r.data),
+  list: (params?: ListBranchesParams) =>
+    apiClient.get<BranchResponse[]>('/api/branches', { params }).then((r) => r.data),
 
   getById: (id: string) => apiClient.get<BranchResponse>(`/api/branches/${id}`).then((r) => r.data),
 

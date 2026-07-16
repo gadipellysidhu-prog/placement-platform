@@ -54,7 +54,7 @@ export const queryKeys = {
 
   branches: {
     all: () => ['branches'] as const,
-    list: () => ['branches', 'list'] as const,
+    list: (params?: Record<string, unknown>) => ['branches', 'list', params] as const,
     detail: (id: string) => ['branches', id] as const,
   },
 
@@ -63,6 +63,13 @@ export const queryKeys = {
     list: (params?: Record<string, unknown>) => ['skills', 'list', params] as const,
     search: (q: string) => ['skills', 'search', q] as const,
     detail: (id: string) => ['skills', id] as const,
+  },
+
+  academicYears: {
+    all: () => ['academic-years'] as const,
+    list: (params?: Record<string, unknown>) => ['academic-years', 'list', params] as const,
+    active: () => ['academic-years', 'active'] as const,
+    detail: (id: string) => ['academic-years', id] as const,
   },
 
   jobIntelligence: {
