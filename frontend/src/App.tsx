@@ -70,6 +70,12 @@ const CertificateVerificationPage = lazy(
 const MyOffersPage = lazy(() => import('@/features/offers/pages/MyOffersPage'))
 const OffersManagementPage = lazy(() => import('@/features/offers/pages/OffersManagementPage'))
 
+// Administration feature pages (admin only)
+const UsersListPage = lazy(() => import('@/features/admin/pages/UsersListPage'))
+const UserDetailPage = lazy(() => import('@/features/admin/pages/UserDetailPage'))
+const AdminSettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
+const AuditLogsPage = lazy(() => import('@/features/admin/pages/AuditLogsPage'))
+
 function AppRoutes(): React.ReactElement {
   return (
     <Suspense fallback={<LoadingPage />}>
@@ -154,6 +160,15 @@ function AppRoutes(): React.ReactElement {
               {/* Certificate verification + offers management (officer/admin). */}
               <Route path={ROUTES.OFFICER.CERTIFICATES} element={<CertificateVerificationPage />} />
               <Route path={ROUTES.OFFICER.OFFERS} element={<OffersManagementPage />} />
+            </Route>
+
+            {/* Administration — admin only, mirroring @PreAuthorize("hasRole('ADMIN')")
+                on /api/admin/**. An officer reaching these lands on 403. */}
+            <Route element={<RoleRoute minimumRole={ROLES.ADMIN} />}>
+              <Route path={ROUTES.ADMIN.USERS} element={<UsersListPage />} />
+              <Route path={`${ROUTES.ADMIN.USERS}/:id`} element={<UserDetailPage />} />
+              <Route path={ROUTES.ADMIN.SETTINGS} element={<AdminSettingsPage />} />
+              <Route path={ROUTES.ADMIN.AUDIT_LOGS} element={<AuditLogsPage />} />
             </Route>
           </Route>
         </Route>

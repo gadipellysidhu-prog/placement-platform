@@ -1,7 +1,15 @@
 import { http, HttpResponse } from 'msw'
 import { API_BASE_URL } from '../constants'
 import type { AuthTokens, User, Page } from '@/types'
-import type { StudentResponse, CertificateResponse, OfferResponse, FileResponse } from '@/lib/api'
+import type {
+  StudentResponse,
+  CertificateResponse,
+  OfferResponse,
+  FileResponse,
+  AdminUserResponse,
+  SettingResponse,
+  AuditLogResponse,
+} from '@/lib/api'
 
 /** Canonical fixtures reused across tests so assertions stay in sync with handlers. */
 export const mockStudentUser: User = {
@@ -12,6 +20,11 @@ export const mockStudentUser: User = {
 export const mockOfficerUser: User = {
   email: 'officer@university.edu',
   role: 'ROLE_PLACEMENT_OFFICER',
+}
+
+export const mockAdminUser: User = {
+  email: 'admin@university.edu',
+  role: 'ROLE_ADMIN',
 }
 
 export const mockTokens: AuthTokens = {
@@ -76,6 +89,58 @@ export const mockOffer: OfferResponse = {
   joiningDate: '2026-07-01',
   createdAt: '2026-02-01T00:00:00Z',
   updatedAt: '2026-02-01T00:00:00Z',
+}
+
+/** Administrative view of an account (GET /api/admin/users). */
+export const mockAdminUserAccount: AdminUserResponse = {
+  id: 'user-2',
+  email: 'officer@university.edu',
+  role: 'ROLE_PLACEMENT_OFFICER',
+  status: 'ACTIVE',
+  emailVerified: true,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+  lastActivityAt: '2026-02-01T09:30:00Z',
+}
+
+/** An account the backend holds no activity record for — must never render as a date. */
+export const mockDormantUserAccount: AdminUserResponse = {
+  id: 'user-3',
+  email: 'invited@university.edu',
+  role: 'ROLE_PLACEMENT_OFFICER',
+  status: 'INVITED',
+  emailVerified: false,
+  createdAt: '2026-02-01T00:00:00Z',
+  updatedAt: '2026-02-01T00:00:00Z',
+  lastActivityAt: null,
+}
+
+export const mockSetting: SettingResponse = {
+  id: 'setting-1',
+  settingKey: 'placement.max-offers-per-student',
+  settingValue: '2',
+  valueType: 'INTEGER',
+  category: 'placement',
+  description: 'Maximum offers a student may hold',
+  academicYearId: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
+export const mockAuditLog: AuditLogResponse = {
+  id: 'audit-1',
+  entityType: 'AppUser',
+  entityId: 'user-2',
+  action: 'USER_DISABLED',
+  performedBy: 'admin@university.edu',
+  correlationId: 'corr-1',
+  ipAddress: '10.0.0.1',
+  userAgent: 'Mozilla/5.0',
+  previousValue: 'ACTIVE',
+  newValue: 'DISABLED',
+  reason: null,
+  success: true,
+  createdAt: '2026-02-01T10:00:00Z',
 }
 
 /** Wrap a content array in a minimal Spring Data Page envelope. */
@@ -178,4 +243,41 @@ export const handlers = [
   http.post(`${API_BASE_URL}/api/offers/:id/expire`, () =>
     HttpResponse.json({ ...mockOffer, status: 'EXPIRED' }),
   ),
+
+  // ── Administration · users (ADMIN only) ──────────────────────────────────
+  http.get(`${API_BASE_URL}/api/admin/users`, () =>
+    HttpResponse.json(pageOf([mockAdminUserAccount, mockDormantUserAccount])),
+  ),
+  http.get(`${API_BASE_URL}/api/admin/users/:id`, () => HttpResponse.json(mockAdminUserAccount)),
+  // Mirrors the backend's 202 + MessageResponse envelope.
+  http.post(`${API_BASE_URL}/api/admin/users/invite`, () =>
+    HttpResponse.json({ message: 'Invitation sent.' }, { status: 202 }),
+  ),
+  http.post(`${API_BASE_URL}/api/admin/users/:id/enable`, () =>
+    HttpResponse.json({ ...mockAdminUserAccount, status: 'ACTIVE' }),
+  ),
+  http.post(`${API_BASE_URL}/api/admin/users/:id/disable`, () =>
+    HttpResponse.json({ ...mockAdminUserAccount, status: 'DISABLED' }),
+  ),
+  http.post(`${API_BASE_URL}/api/admin/users/:id/lock`, () =>
+    HttpResponse.json({ ...mockAdminUserAccount, status: 'LOCKED' }),
+  ),
+  http.post(`${API_BASE_URL}/api/admin/users/:id/unlock`, () =>
+    HttpResponse.json({ ...mockAdminUserAccount, status: 'ACTIVE' }),
+  ),
+  http.put(`${API_BASE_URL}/api/admin/users/:id/role`, () =>
+    HttpResponse.json({ ...mockAdminUserAccount, role: 'ROLE_ADMIN' }),
+  ),
+
+  // ── Administration · settings (ADMIN only) ───────────────────────────────
+  http.get(`${API_BASE_URL}/api/admin/settings`, () => HttpResponse.json(pageOf([mockSetting]))),
+  http.get(`${API_BASE_URL}/api/admin/settings/:id`, () => HttpResponse.json(mockSetting)),
+  http.put(`${API_BASE_URL}/api/admin/settings`, () => HttpResponse.json(mockSetting)),
+  http.delete(
+    `${API_BASE_URL}/api/admin/settings/:id`,
+    () => new HttpResponse(null, { status: 204 }),
+  ),
+
+  // ── Administration · audit logs (ADMIN only, read-only) ──────────────────
+  http.get(`${API_BASE_URL}/api/admin/audit-logs`, () => HttpResponse.json(pageOf([mockAuditLog]))),
 ]
